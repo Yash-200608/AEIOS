@@ -1,0 +1,21 @@
+---
+description: DRAFT — node firmware contracts. Conflicts with FAS/ESP-IDF C tree and AMP. Do not scaffold PlatformIO or rewrite firmware/node until CONFLICT_MATRIX is decided.
+globs: firmware/**
+alwaysApply: false
+---
+
+# Firmware (draft)
+
+Full text: [docs/context/02-hardware-firmware.md](docs/context/02-hardware-firmware.md). Existing implemented tree: `firmware/node/` (ESP-IDF C). Candidate sketch: `firmware/sensing_node/`.
+
+- No generic `readSensor()` treating all devices identically. Explicit PMS5003 / SCD41 / BME688 / MQ135 / SX1278 drivers.
+- Three layers: hardware driver → normalized observation → intelligence. Packet layer ≠ radio driver. Policy ≠ driver (`if pm25 > 80 turnOnMQ135` is forbidden in the PMS driver).
+- Per-sensor states; graceful degradation; never fabricate values; never block forever on I²C/UART.
+- MQ135 is a heater FSM (OFF → WARM-UP → MEASURE → STOP). Raw ADC is not ppm. Do not leave the heater on without software state.
+- Quality flags must survive into packets. Baseline before strong event decisions.
+- Adaptive policy is replaceable: `adaptive_policy.evaluate(context)`. Leave interfaces for CrossModalConfidenceEngine, InformationValueEstimator, EnergyPolicy.
+- Host-testable mocks; production-disabled fault injection.
+- Firmware version ≠ protocol version. Pins and radio modem params live in config structs.
+- Open: FreeRTOS vs cooperative, exact intervals, ACK/retry, confidence math.
+
+Do not change D1 firmware or BSP pins in this draft-rules phase.

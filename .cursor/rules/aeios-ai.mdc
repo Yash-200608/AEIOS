@@ -1,0 +1,20 @@
+---
+description: DRAFT — intelligence layer. Conflicts with SHAP-required SAD and Gate C TinyML ban. Do not start with an ML model.
+globs: ai/**
+alwaysApply: false
+---
+
+# AI / adaptive sensing (draft)
+
+Full text: [docs/context/04-ai-adaptive-sensing.md](docs/context/04-ai-adaptive-sensing.md).
+
+- Not: values → one ML model → prediction. Multi-stage: quality → features → baseline → cross-modal confidence → event → spatial → explanation.
+- Sensor quality ≠ event confidence. Severity ≠ confidence. Environment-event vs sensor-fault vs uncertain (three scores).
+- Sensor semantics: PMS and SCD41 are quantitative; BME688 and MQ135 are features, never fake ppm.
+- Do not update baseline during confirmed events. Feature windows are configurable.
+- V1 deliverables A–H first (quality, baseline, cross-modal C, rule policy, basic anomaly, classifier, basic spatial, explanations). Advanced ML only if it beats simple baselines.
+- Information-value-per-energy is a hypothesis. Compare against fixed-rate, battery-only, and threshold policies. Measure energy.
+- On-node: deterministic validation, lightweight features, adaptive/power policy. Gateway: heavier ML, multi-node, forecasting. Tiny models on ESP32 are not a V1 claim (Gate C excludes TinyML).
+- AI failure → deterministic fallback. Never drop the observation. Never fabricate values or bypass packet validation.
+- Persist decision traces in `sampling_decisions`. Hybrid explanations required; SHAP is optional in this draft vs required in SAD — see conflict matrix.
+- Production vs experimental models; no silent auto-retrain.
