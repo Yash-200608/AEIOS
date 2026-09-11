@@ -1,5 +1,5 @@
 ---
-description: DRAFT — LoRa, gateway, SQLite. Conflicts with AMP mesh, TimescaleDB, MQTT. Do not replace AMP or TimescaleDB until CONFLICT_MATRIX is decided.
+description: LoRa AMP, star v1, SQLite, no MQTT on core ingest. Frozen AMP spec is not rewritten here.
 globs:
   - gateway/**
   - backend/**
@@ -7,18 +7,13 @@ globs:
 alwaysApply: false
 ---
 
-# Comms / gateway / database (draft)
+# Comms / gateway / database
 
-Full text: [docs/context/03-comms-gateway-database.md](docs/context/03-comms-gateway-database.md). Frozen on-wire today: AMP (DOC-005).
+- Radio payload is untrusted. Validate frame, CRC, version, schema, node ID; then de-dup and sequence analysis.
+- AMP Protocol Version 1 remains on the wire (ADR-006). `uint16` `wire_id`; registry `display_id` (e.g. NODE-03). ADR-009.
+- Physical: SX1278 433 MHz, star v1. Do not retune to 868/915. Do not casually rewrite AMP_PROTOCOL_SPEC.md.
+- `measurement_time` and `received_at` stay separate. TIME_SYNC without GNSS (ADR-010). Missing ≠ zero.
+- SQLite v1 behind a repository (ADR-014). `sampling_decisions` mandatory. Dashboard/AI must not open the DB file.
+- MQTT is not on the core path (ADR-015): radio → validate → ingest → SQLite → intelligence → API/WebSocket.
 
-Candidate rules (unresolved vs AMP/baseline):
-
-- Treat the radio payload as untrusted. Validate frame, length, CRC, version, schema, node ID, then de-dup and sequence analysis. Never ingest corrupt packets into measurement tables.
-- `protocol_version` ≠ `firmware_version`. Never decode v2 with v1 rules.
-- At-least-once on air + gateway de-duplication. Missing ≠ zero. Keep `timestamp` and `received_at` separate.
-- Persist `sampling_decisions` (why sampling changed), radio RSSI/SNR, quality flags.
-- Dashboard must not query SQLite. FastAPI + WebSocket. AI must not know SQL table names.
-- Offline-first: internet down must not stop LoRa, DB, local AI, LAN dashboard.
-- MQTT, Prometheus, and Docker are optional in this candidate constitution — do not add them by default.
-
-Do not rewrite AMP, ICD-001/002, or the TimescaleDB baseline until the conflict matrix is decided.
+This rule does not override AMP or DOC-004 until those documents are formally revised.

@@ -1,0 +1,16 @@
+idf.py --version: Cannot import module "esp_idf_monitor". This usually means that "idf.py" was not spawned within an ESP-IDF shell environment or the python virtual environment used by "idf.py" is corrupted. Please use idf.py only in an ESP-IDF shell environment. If problem persists, please try to install ESP-IDF tools again as described in the Get Started guide.
+IDF_PATH=C:\Users\Hp\esp\esp-idf
+IDF_PYTHON_ENV_PATH=C:\Users\Hp\.espressif\python_env\idf5.3_py3.12_env
+ESP_IDF_VERSION=5.3
+python --version: Python 3.12.10
+python path: C:\Users\Hp\AppData\Local\Programs\Python\Python312\python.exe
+cmake --version: cmake version 3.30.2
+cmake path: C:\Users\Hp\.espressif\tools\cmake\3.30.2\bin\cmake.exe
+ninja --version: 1.12.1
+ninja path: C:\Users\Hp\.espressif\tools\ninja\1.12.1\ninja.exe
+xtensa-esp32-elf-gcc --version: xtensa-esp-elf-gcc.exe (crosstool-NG esp-13.2.0_20240530) 13.2.0
+xtensa path: C:\Users\Hp\.espressif\tools\xtensa-esp-elf\esp-13.2.0_20240530\xtensa-esp-elf\bin\xtensa-esp32-elf-gcc.exe
+git --version: git version 2.53.0.windows.2
+openocd --version: Open On-Chip Debugger v0.12.0-esp32-20241016 (2024-10-16-14:17)
+openocd path: C:\Users\Hp\.espressif\tools\openocd-esp32\v0.12.0-esp32-20241016\openocd-esp32\bin\openocd.exe
+COM ports: COM1, COM3

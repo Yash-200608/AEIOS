@@ -1,22 +1,20 @@
 ---
-description: DRAFT — AEIOS constitution / closed-loop / patent loop. Conflicts unresolved; do not treat as overriding Gate A–C ADRs.
+description: AEIOS constitution / closed-loop / patent loop. Target architecture is ADR-009…017; Gate A–C docs remain release law until change-queue revisions.
 alwaysApply: false
 ---
 
-# AEIOS constitution (draft)
+# AEIOS constitution
 
-Full text: [docs/context/01-master-constitution.md](docs/context/01-master-constitution.md). Load 01 then 02–05 before architecture work. Conflicts: [docs/context/CONFLICT_MATRIX.md](docs/context/CONFLICT_MATRIX.md).
+See [docs/context/RESOLVED_ARCHITECTURE.md](docs/context/RESOLVED_ARCHITECTURE.md) and [docs/context/CONFLICT_MATRIX.md](docs/context/CONFLICT_MATRIX.md). Full narrative: [docs/context/01-master-constitution.md](docs/context/01-master-constitution.md).
 
 AEIOS is a closed-loop environmental intelligence system, not a passive logger or air-quality dashboard.
 
 Do not collapse to: read sensors → upload → dashboard.
 
-Preserve the loop: sense → quality → cross-modal confidence → adaptive decision → new measurement → explanation.
+Preserve: sense → quality → cross-modal confidence → adaptive decision → new measurement → explanation.
 
-Patent-relevant interactions to keep testable: (A) cross-modal confidence + conditional activation + information-value-per-energy, (B) enclosure thermal/airflow affecting quality, (C) GPS-less spatial reconstruction from configured coordinates.
+Patent-relevant loops: (A) cross-modal confidence + conditional activation + VoI/energy, (B) enclosure thermal/airflow → quality, (C) GPS-less spatial reconstruction from configured coordinates.
 
-Supporting tech (LoRa, ESP32, Pi, SQLite, generic ML) is not the invention.
+Do not silently rewrite charter, SRS, SAD, AMP, FAS, or DOC-004. Put required edits on [docs/adr/CONTROLLED_DOC_CHANGE_QUEUE.md](docs/adr/CONTROLLED_DOC_CHANGE_QUEUE.md).
 
-Before a feature: modular? testable without hardware? offline? observable? provenance kept? adaptive loop intact? no fake accuracy?
-
-Prefer extensible architecture over shortest code. Do not add abstraction for its own sake.
+This rule does not override a controlled document.

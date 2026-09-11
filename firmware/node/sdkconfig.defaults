@@ -1,0 +1,7 @@
+# AEIOS node — D1 defaults (DOC-006 / GOV-EXEC)
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_FREERTOS_HZ=100
+# Deployment profile: Wi-Fi/BT not enabled by default (ADR maintenance mode separate)

@@ -1,39 +1,42 @@
 # AEIOS agent guidance
 
-Load context in this order before major architectural work:
+Load in this order before major architectural work:
 
-1. [docs/context/01-master-constitution.md](docs/context/01-master-constitution.md)
-2. [docs/context/02-hardware-firmware.md](docs/context/02-hardware-firmware.md)
-3. [docs/context/03-comms-gateway-database.md](docs/context/03-comms-gateway-database.md)
-4. [docs/context/04-ai-adaptive-sensing.md](docs/context/04-ai-adaptive-sensing.md)
-5. [docs/context/05-dev-test-deployment.md](docs/context/05-dev-test-deployment.md)
+1. [docs/context/CONFLICT_MATRIX.md](docs/context/CONFLICT_MATRIX.md) (resolved 2026-09-11)
+2. [docs/context/RESOLVED_ARCHITECTURE.md](docs/context/RESOLVED_ARCHITECTURE.md)
+3. [docs/context/01-master-constitution.md](docs/context/01-master-constitution.md) through [05](docs/context/05-dev-test-deployment.md)
+4. ADR-009…017 under [docs/adr/](docs/adr/)
 
-These five files are the **candidate constitution**. Distilled Cursor rules live in `.cursor/rules/` with `alwaysApply: false` until [docs/context/CONFLICT_MATRIX.md](docs/context/CONFLICT_MATRIX.md) is decided.
+**Release law:** Gate A–C controlled documents (charter, SRS, SAD, DOC-004, AMP, FAS, ADR-001…008 as frozen). Do not silently rewrite them. Required follow-up edits: [docs/adr/CONTROLLED_DOC_CHANGE_QUEUE.md](docs/adr/CONTROLLED_DOC_CHANGE_QUEUE.md).
 
-**Do not treat Context Files 01–05 as silently overriding frozen Gate A–C documents** (charter, SRS, technology baseline, AMP, FAS, ADRs). Implemented law remains those controlled documents until each conflict row has an explicit Decision.
+**Target architecture:** resolved matrix + ADR-009…017. Where they disagree with a frozen document, implement toward the ADR and record the document gap in the change queue.
+
+Cursor rules in `.cursor/rules/` stay `alwaysApply: false` so they cannot override controlled documents.
 
 ## Role
 
-Behave as a senior embedded + AI + distributed-systems engineer, not a code generator. Prefer a correct, extensible architecture over the shortest code. Avoid abstraction for its own sake.
+Senior embedded + AI + distributed-systems engineer. Prefer a correct, extensible architecture over the shortest code. Avoid abstraction for its own sake.
+
+## Locked for implementation
+
+- Hardware: ESP32-DevKitC-32E, PMS5003, SCD41, BME688, MQ135, SX1278 @ 433 MHz, Pi 5. No GPS/GNSS. No 868/915 MHz.
+- Pins: centralized BSP `HW-NODE-r2` (ADR-013). GPIO34 = MQ135 only; battery ADC unassigned until schematic.
+- Firmware: ESP-IDF C in `firmware/node/` only. No Arduino, no PlatformIO tree, no TinyML/TFLite.
+- MQ135 and BME688 gas outputs are **not** universal ppm.
+- AMP v1 on the wire (`uint16` IDs); star v1; ACK/NACK retained.
+- SQLite v1 behind a repository; MQTT not on the core ingest path.
+- Node count configurable; do not hard-code five nodes.
+- Do not reuse ADR numbers 001–008. Next free: ADR-018.
+- Hardware-independent simulation lives in `simulation/` and must use the same AMP/SQLite/observation contracts. Simulation outputs are never field-readiness evidence.
 
 ## Before implementing a feature
 
-- Does this fit AEIOS as a closed-loop sensing system (not a logger or dashboard-only product)?
-- Does it respect locked hardware (or is the lock explicitly reopened in the conflict matrix)?
-- Is it modular, testable without hardware, and observable?
-- Can it run offline?
-- Does it preserve quality flags, provenance, and `sampling_decisions`?
-- Does it accidentally destroy adaptive / patent-relevant loops (cross-modal confidence, VoI, GPS-less spatial estimates)?
-- Does it couple layers that should stay separate?
-- Does it create a migration problem?
-
-## Hard constraints while conflicts are unresolved
-
-- Do not rewrite charter, SRS, SAD, ADRs, AMP, or BSP pin maps as a side effect of feature work.
-- Do not enable always-on Cursor rules.
-- Do not start with an AI model. Contracts and the smallest real data path come first.
-- Do not present simulated/demo data as live field data.
-- Do not reuse ADR numbers 001–008. New ADRs continue from the next free number.
+- Does this fit closed-loop AEIOS (not a logger)?
+- Does it match target ADRs without rewriting frozen docs in place?
+- Modular, host-testable, offline, observable?
+- Quality flags, provenance, `sampling_decisions` preserved?
+- Adaptive / patent-relevant loop intact?
+- MVN still gates field-readiness claims (C-19).
 
 ## Priority
 

@@ -686,7 +686,7 @@ A future team member should be able to reconstruct the system from documentation
 
 Important decisions should be recorded.
 
-**Note for this ingest:** Example names in the original Context File 05 (`ADR-001 SQLite selected`, `ADR-002 SX1278 fixed at 433 MHz`, …) **collide** with existing numbered ADRs in this repository. Do not reuse ADR-001…008. New ADRs must continue from the next free number after the current set. See [CONFLICT_MATRIX.md](CONFLICT_MATRIX.md) and [docs/VERSIONING.md](../VERSIONING.md).
+**Note:** Example names in the original Context File 05 (`ADR-001 SQLite selected`, `ADR-002 SX1278 fixed at 433 MHz`, …) **collide** with existing numbered ADRs. Those examples are not real records. Reconciliation used **ADR-009…017**. Never reuse 001–008. See [CONFLICT_MATRIX.md](CONFLICT_MATRIX.md) C-18 and [docs/VERSIONING.md](../VERSIONING.md).
 
 Every ADR should record: decision, context, alternatives, reason, consequences, date.
 

@@ -1,21 +1,18 @@
 ---
-description: DRAFT — node firmware contracts. Conflicts with FAS/ESP-IDF C tree and AMP. Do not scaffold PlatformIO or rewrite firmware/node until CONFLICT_MATRIX is decided.
+description: Node firmware — ESP-IDF C under firmware/node. No PlatformIO, Arduino, GPS, or TinyML.
 globs: firmware/**
 alwaysApply: false
 ---
 
-# Firmware (draft)
+# Firmware
 
-Full text: [docs/context/02-hardware-firmware.md](docs/context/02-hardware-firmware.md). Existing implemented tree: `firmware/node/` (ESP-IDF C). Candidate sketch: `firmware/sensing_node/`.
-
-- No generic `readSensor()` treating all devices identically. Explicit PMS5003 / SCD41 / BME688 / MQ135 / SX1278 drivers.
-- Three layers: hardware driver → normalized observation → intelligence. Packet layer ≠ radio driver. Policy ≠ driver (`if pm25 > 80 turnOnMQ135` is forbidden in the PMS driver).
-- Per-sensor states; graceful degradation; never fabricate values; never block forever on I²C/UART.
-- MQ135 is a heater FSM (OFF → WARM-UP → MEASURE → STOP). Raw ADC is not ppm. Do not leave the heater on without software state.
-- Quality flags must survive into packets. Baseline before strong event decisions.
-- Adaptive policy is replaceable: `adaptive_policy.evaluate(context)`. Leave interfaces for CrossModalConfidenceEngine, InformationValueEstimator, EnergyPolicy.
+- ESP-IDF C in `firmware/node/` (`aeios_bsp` / `hal` / `drivers` / `amp` / `services` / `app`). ADR-002 stands. No parallel PlatformIO/C++ tree.
+- Explicit drivers: PMS5003, SCD41, BME688, MQ135, SX1278. No GPS driver.
+- Layers: driver → normalized observation → intelligence. Packet codec ≠ radio driver. Policy ≠ driver.
+- MQ135 heater FSM; raw ADC is not ppm. BME688 gas is a feature, not ppm.
+- Quality flags survive into packets. AMP ACK/NACK/retry retained (C-08).
+- Bring-up: ADR-013 (power → BSP → I²C → SCD41/BME688 → PMS → MQ135 → LoRa → intelligence). No GPS. No indefinite blocking.
+- Deterministic adaptive policy on node; no TFLite (ADR-017).
 - Host-testable mocks; production-disabled fault injection.
-- Firmware version ≠ protocol version. Pins and radio modem params live in config structs.
-- Open: FreeRTOS vs cooperative, exact intervals, ACK/retry, confidence math.
 
-Do not change D1 firmware or BSP pins in this draft-rules phase.
+This rule does not override FAS; pin/driver names follow ADR-013 until FAS is revised.

@@ -897,10 +897,10 @@ SQLite/system logs are sufficient for early development.
 Recommended stack:
 
 - Python: FastAPI, Pydantic, SQLAlchemy or sqlite3, pytest
-- ESP32: PlatformIO or ESP-IDF / Arduino-compatible environment; Unity/Catch2 equivalent if appropriate
-- Gateway: systemd or Docker
+- ESP32: **ESP-IDF only** (C-21 / ADR-002). Arduino is not approved. PlatformIO is not a separate AEIOS firmware architecture.
+- Gateway: systemd (field) or Docker (dev) — ADR-016
 
-The final choice can remain open until repository setup.
+Historical ingest text allowed “PlatformIO or Arduino-compatible”; that wording is superseded.
 
 ## 77. Coding Rule — No Business Logic in Drivers
 

@@ -1,0 +1,28 @@
+menu "AEIOS Verification (D1)"
+
+config AEIOS_TEST_MODE
+    bool "Enable AEIOS verification harness (NOT for production)"
+    default n
+    help
+        Compile-time D1 verification harness: sequenced WDT starve and deep sleep.
+        Must remain disabled for production builds.
+
+if AEIOS_TEST_MODE
+
+config AEIOS_TEST_DEEP_SLEEP_MS
+    int "Deep sleep duration for verification (ms)"
+    range 1000 60000
+    default 10000
+    help
+        Timer wake duration used by the deep-sleep verification phase.
+
+config AEIOS_TEST_WDT_TIMEOUT_S
+    int "TWDT timeout override while harness runs (seconds)"
+    range 3 30
+    default 5
+    help
+        Temporary TWDT timeout used only inside the test harness before starve.
+
+endif
+
+endmenu

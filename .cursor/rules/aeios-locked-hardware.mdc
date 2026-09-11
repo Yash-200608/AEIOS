@@ -1,20 +1,16 @@
 ---
-description: DRAFT — locked hardware, GPS ban, pin config. Conflicts with tech baseline / ADR-005 / ADR-007 / BSP. Do not rewrite BSP until CONFLICT_MATRIX is decided.
+description: Locked hardware, no GPS, HW-NODE-r2 pins (ADR-013). Does not override controlled DOC-004 until change-queue revision.
 alwaysApply: false
 ---
 
-# Locked hardware (draft)
+# Locked hardware
 
-Full text: [docs/context/01-master-constitution.md](docs/context/01-master-constitution.md), [docs/context/02-hardware-firmware.md](docs/context/02-hardware-firmware.md).
+- ESP32-DevKitC-32E, PMS5003, SCD41, BME688, MQ135, SX1278 @ 433 MHz, Raspberry Pi 5.
+- No GPS/GNSS: no UART, PPS, parser, packet fields, runtime dependency.
+- No 868/915 MHz. Wi-Fi/BLE are not the field telemetry path.
+- Pins live only in BSP (`HW-NODE-r2`, ADR-013): I²C 21/22, PMS 16/17, LoRa SPI 18/23/19 CS5 RST14 DIO0 25, MQ135 ADC 34, LED 2.
+- GPIO34 is MQ135 only. Battery ADC is `AEIOS_BSP_PIN_UNASSIGNED` until a second channel is validated. Do not hide electrical conflicts.
+- MQ135 divider ratio is configuration. Conditioned analog only.
+- Configurable node identity; do not hard-code five nodes.
 
-Candidate locks (not applied to existing BSP until conflict sign-off):
-
-- PMS5003 (UART PM), SCD41 (I²C CO₂/T/RH @ 0x62), BME688 (I²C T/RH/P/gas features @ 0x76/0x77), MQ135 (conditioned ADC, not ppm), ESP32-DevKitC-32E, SX1278 @ 433 MHz, Raspberry Pi 5.
-- GPS/GNSS is not used. No GPS UART, PPS, parser, or coordinates in node packets. Location lives in gateway node registry.
-- Wi-Fi/BLE are not the field telemetry path.
-- Keep GPIO in one config layer. Candidate map: I²C 21/22, PMS UART RX16/TX17, LoRa SPI 18/23/19 CS5, RST14, DIO0 25, MQ135 ADC 34, LED 2.
-- Do not scatter pin numbers. MQ135 divider ratio is configuration, not a magic number.
-- Do not retune LoRa to 868/915 MHz without an explicit hardware reopen.
-- Do not hard-code exactly five nodes. Configurable `node_id`.
-
-Existing firmware BSP and ADRs currently disagree on several of these. See [docs/context/CONFLICT_MATRIX.md](docs/context/CONFLICT_MATRIX.md).
+This rule does not override a controlled document.

@@ -20,11 +20,12 @@
 | PR Evidence Checklist | [governance/PR_EVIDENCE_CHECKLIST.md](governance/PR_EVIDENCE_CHECKLIST.md) | Required for main |
 | D1 Acceptance Preview | [gates/D1_ACCEPTANCE_PREVIEW.md](gates/D1_ACCEPTANCE_PREVIEW.md) | Evidence pack for D1 |
 | Field Test Plan (DOC-008) | [field/FTP_STUB.md](field/FTP_STUB.md) | Stub — blocked until MVN |
-| ADRs | [adr/](adr/) | Accepted |
+| ADRs | [adr/](adr/) | ADR-001…008 historical; ADR-009…017 target architecture |
 | RTM | [traceability/RTM.md](traceability/RTM.md) | Living |
 | Risk Register | [risk/RISK_REGISTER.md](risk/RISK_REGISTER.md) | Living |
 | Versioning | [VERSIONING.md](VERSIONING.md) | Active |
-| Context stack (candidate constitution) | [context/](context/) | **Draft** — does not override Gate A–C until [CONFLICT_MATRIX.md](context/CONFLICT_MATRIX.md) is decided |
+| Context stack | [context/](context/) | Candidate constitution; **matrix resolved 2026-09-11** — [CONFLICT_MATRIX.md](context/CONFLICT_MATRIX.md), [RESOLVED_ARCHITECTURE.md](context/RESOLVED_ARCHITECTURE.md) |
+| ADR change queue | [adr/CONTROLLED_DOC_CHANGE_QUEUE.md](adr/CONTROLLED_DOC_CHANGE_QUEUE.md) | Frozen docs awaiting formal revision |
 | ICDs | [icd/](icd/) | ICD-001/002 **Active**; 003/004 stubs |
 | Gate A checklist | [gates/GATE_A_CHECKLIST.md](gates/GATE_A_CHECKLIST.md) | **ACCEPTED** |
 | Gate B checklist | [gates/GATE_B_CHECKLIST.md](gates/GATE_B_CHECKLIST.md) | **ACCEPTED** |

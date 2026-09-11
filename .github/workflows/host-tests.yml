@@ -1,0 +1,72 @@
+name: Host Protocol Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure host tests (-Wall -Wextra -Werror)
+        run: cmake -B build -S firmware/host_tests
+
+      - name: Build
+        run: cmake --build build
+
+      - name: CTest (fail on regression)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Python golden reference
+        run: python3 firmware/host_tests/golden_ref.py
+
+      - name: Gateway AMP/PMS host tests
+        run: python3 -m unittest discover -s gateway/tests -v
+
+      - name: Simulation laboratory host tests
+        run: python3 -m unittest discover -s simulation/tests -v
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analyzers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-tidy clang-format
+
+      - name: cppcheck (warnings/performance; fail on findings)
+        run: |
+          cppcheck --enable=warning,performance --error-exitcode=1 --std=c11 \
+            --inline-suppr \
+            -Ifirmware/node/components/aeios_amp/include \
+            -Ifirmware/host_mocks/include \
+            -Ifirmware/node/components/aeios_drivers/include \
+            firmware/node/components/aeios_amp/src \
+            firmware/host_mocks 2>&1 | tee cppcheck_out.txt
+
+      - name: clang-tidy (recommended)
+        run: |
+          cmake -B build-tidy -S firmware/host_tests -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          clang-tidy -p build-tidy \
+            firmware/node/components/aeios_amp/src/replay.c \
+            firmware/node/components/aeios_amp/src/validate.c \
+            firmware/node/components/aeios_amp/src/parser.c \
+            firmware/node/components/aeios_amp/src/routing.c \
+            firmware/node/components/aeios_amp/src/retry.c \
+            firmware/node/components/aeios_amp/src/queue.c \
+            2>&1 | tee clang_tidy_out.txt
+
+      - name: clang-format check
+        run: |
+          mapfile -t FILES < <(git ls-files \
+            'firmware/node/components/aeios_amp/**/*.c' \
+            'firmware/node/components/aeios_amp/**/*.h' \
+            'firmware/host_tests/*.c' \
+            'firmware/host_mocks/**/*.c' \
+            'firmware/host_mocks/**/*.h')
+          if [ ${#FILES[@]} -eq 0 ]; then echo "No files"; exit 0; fi
+          clang-format --dry-run --Werror "${FILES[@]}"

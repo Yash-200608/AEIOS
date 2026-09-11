@@ -1,0 +1,91 @@
+ip revision: v3.1[0m
+[0;32mI (39) boot.esp32: SPI Speed      : 40MHz[0m
+[0;32mI (44) boot.esp32: SPI Mode       : DIO[0m
+[0;32mI (48) boot.esp32: SPI Flash Size : 2MB[0m
+[0;32mI (53) boot: Enabling RNG early entropy source...[0m
+[0;32mI (58) boot: Partition Table:[0m
+[0;32mI (62) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (69) boot:  0 nvs              WiFi data        01 02 00009000 00006000[0m
+[0;32mI (77) boot:  1 phy_init         RF data          01 01 0000f000 00001000[0m
+[0;32mI (84) boot:  2 factory          factory app      00 00 00010000 00100000[0m
+[0;32mI (92) boot: End of partition table[0m
+[0;32mI (96) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=0aa98h ( 43672) map[0m
+[0;32mI (119) esp_image: segment 1: paddr=0001aac0 vaddr=3ffb0000 size=024ach (  9388) load[0m
+[0;32mI (123) esp_image: segment 2: paddr=0001cf74 vaddr=40080000 size=030a4h ( 12452) load[0m
+[0;32mI (130) esp_image: segment 3: paddr=00020020 vaddr=400d0020 size=196a4h (104100) map[0m
+[0;32mI (169) esp_image: segment 4: paddr=000396cc vaddr=400830a4 size=0a27ch ( 41596) load[0m
+[0;32mI (192) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (193) boot: Disabling RNG early entropy source...[0m
+[0;32mI (205) cpu_start: Multicore app[0m
+[0;32mI (213) cpu_start: Pro cpu start user code[0m
+[0;32mI (213) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (213) app_init: Application information:[0m
+[0;32mI (216) app_init: Project name:     aeios_node[0m
+[0;32mI (221) app_init: App version:      1[0m
+[0;32mI (226) app_init: Compile time:     Aug  2 2026 14:21:51[0m
+[0;32mI (232) app_init: ELF file SHA256:  f39f1e508...[0m
+[0;32mI (237) app_init: ESP-IDF:          v5.3.2[0m
+[0;32mI (242) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (246) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (251) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (256) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (264) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (270) heap_init: At 3FFB2DC8 len 0002D238 (180 KiB): DRAM[0m
+[0;32mI (276) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (282) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (289) heap_init: At 4008D320 len 00012CE0 (75 KiB): IRAM[0m
+[0;32mI (296) spi_flash: detected chip: generic[0m
+[0;32mI (299) spi_flash: flash io: dio[0m
+[0;33mW (303) spi_flash: Detected size(4096k) larger than the size in the binary image header(2048k). Using the size in the binary image header.[0m
+[0;32mI (317) main_task: Started on CPU0[0m
+[0;32mI (327) main_task: Calling app_main()[0m
+[0;32mI (327) aeios_boot: ==== AEIOS Sentinel boot (DOC-006) ====[0m
+[0;32mI (327) aeios_boot: reset_reason=1[0m
+[0;32mI (347) aeios_boot: NVS flash OK[0m
+[0;32mI (347) aeios_bsp: BSP init rev=HW-NODE-r1[0m
+[0;32mI (347) gpio: GPIO[2]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (347) gpio: GPIO[0]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 [0m
+[0;32mI (357) aeios_bsp: BSP ready (I2C sda=21 scl=22 LoRa cs=15)[0m
+[0;32mI (367) aeios_boot: BSP OK hw_rev=HW-NODE-r1[0m
+[0;32mI (367) aeios_hal: HAL init[0m
+[0;32mI (377) aeios_boot: HAL OK[0m
+[0;32mI (377) aeios_log: logging service ready (level=INFO default)[0m
+[0;32mI (387) aeios_cfg: config loaded node=16 gw=2 sample=60s hb=120s[0m
+[0;32mI (387) aeios_sleep: sleep manager ready[0m
+[0;32mI (397) aeios_svc: services OK[0m
+[0;32mI (397) aeios_boot: SERVICES OK[0m
+[0;32mI (407) drv_wdt: watchdog driver init[0m
+[0;32mI (407) aeios_drv: watchdog init OK[0m
+[0;32mI (407) drv_rtc: rtc driver init (HAL-backed)[0m
+[0;32mI (417) aeios_drv: rtc init OK[0m
+[0;32mI (417) drv_stub: battery skeleton init (no sensor I/O)[0m
+[0;32mI (427) aeios_drv: battery init OK[0m
+[0;32mI (427) drv_stub: bme680 skeleton init (no sensor I/O)[0m
+[0;32mI (437) aeios_drv: bme680 init OK[0m
+[0;32mI (437) drv_stub: scd41 skeleton init (no sensor I/O)[0m
+[0;32mI (447) aeios_drv: scd41 init OK[0m
+[0;32mI (447) drv_stub: pms5003 skeleton init (no sensor I/O)[0m
+[0;32mI (457) aeios_drv: pms5003 init OK[0m
+[0;32mI (457) drv_stub: lora skeleton init (no sensor I/O)[0m
+[0;32mI (467) aeios_drv: lora init OK[0m
+[0;32mI (467) drv_stub: gps skeleton init (no sensor I/O)[0m
+[0;32mI (477) aeios_drv: gps init OK[0m
+[0;32mI (477) aeios_boot: DRIVERS init OK[0m
+[0;32mI (487) drv_wdt: self_test PASS[0m
+[0;32mI (487) aeios_drv: watchdog self_test -> 0[0m
+[0;32mI (487) drv_rtc: self_test PASS t=1700000000[0m
+[0;32mI (497) aeios_drv: rtc self_test -> 0[0m
+[0;32mI (497) aeios_drv: battery self_test -> 0[0m
+[0;32mI (507) aeios_drv: bme680 self_test -> 0[0m
+[0;32mI (507) aeios_drv: scd41 self_test -> 0[0m
+[0;32mI (517) aeios_drv: pms5003 self_test -> 0[0m
+[0;32mI (517) aeios_drv: lora self_test -> 0[0m
+[0;32mI (527) aeios_drv: gps self_test -> 0[0m
+[0;32mI (527) aeios_boot: SELF-TEST OK (wdt+rtc)[0m
+[0;32mI (537) aeios_boot: config node_id=16 gw_id=2[0m
+[0;32mI (537) aeios_boot: AMP: host-tested codec linked; air TX deferred until D2 LoRa[0m
+[0;32mI (547) aeios_app: starting FreeRTOS tasks (DOC-006)[0m
+[0;32mI (547) aeios_app: diag heartbeat uptime_ms=262 unix=1700000000[0m
+[0;32mI (557) aeios_boot: ==== Boot complete — normal operation (D1 skeleton) ====[0m
+[0;32mI (567) main_task: Returned from app_main()[0m
+[0;32mI (15557) aeios_app: diag heartbeat uptime_ms=15262 unix=1700000015[0m

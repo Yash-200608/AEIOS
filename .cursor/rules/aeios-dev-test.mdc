@@ -1,5 +1,5 @@
 ---
-description: DRAFT — test, simulation, deploy. Demo data must never look live. Do not start implementation sprints until CONFLICT_MATRIX is decided.
+description: Test and deploy — MVN gates field claims; demo data must not look live.
 globs:
   - tests/**
   - simulation/**
@@ -7,21 +7,19 @@ globs:
 alwaysApply: false
 ---
 
-# Dev / test / deploy (draft)
+# Dev / test / deploy
 
-Full text: [docs/context/05-dev-test-deployment.md](docs/context/05-dev-test-deployment.md).
-
-A feature is done when it has implementation + tests + observability + failure behavior + docs + repeatable validation. Compiling is not done.
+A feature is done when it has implementation + tests + observability + failure behavior + docs + repeatable validation.
 
 Priority: correctness → observability → testability → maintainability → measured performance → sophistication.
 
-- Contracts first: firmware ↔ packet ↔ decoder ↔ DB ↔ AI ↔ API ↔ dashboard. Golden packet fixtures. Synthetic node uses the same encoder as firmware.
-- Test pyramid. Host unit tests without hardware. Simulation mandatory and seedable. HIL after unit tests.
+- Contracts first. Golden AMP fixtures. Synthetic node uses the same encoder.
+- Host unit tests without hardware. Simulation seedable.
 - Separate versions: firmware, protocol, DB schema, config, features, model.
-- Envs: development / simulation / hardware_test / staging / production. Modes: demo / field / calibration / experiment. Never present simulated data as real.
-- Production disables unrestricted fault injection. No secrets in git.
-- Consistent names: `node_id`, `event_confidence`, `sensor_quality`, `received_at`, `measurement_time`. Explicit units.
-- Do not start with the AI model. Smallest real data path first (after conflict sign-off).
-- Do not reuse ADR numbers 001–008.
+- Demo / field / calibration / experiment: never present simulated data as real.
+- Compose for dev; systemd OK on the Pi (ADR-016).
+- MVN still gates field readiness. Do not claim accuracy, range, or energy savings without evidence.
+- Next implementation slice: PMS-first E2E on the ESP-IDF tree — not an AI model first.
+- Next ADR number: 018.
 
-Existing execution path (D1 accepted, D2/MVN) remains implemented law until the matrix is decided.
+This rule does not override GOV-EXEC-001.

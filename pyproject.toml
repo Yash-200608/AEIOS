@@ -1,0 +1,20 @@
+[project]
+name = "aeios"
+version = "0.1.0"
+description = "AEIOS gateway contracts and hardware-independent simulation laboratory"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["gateway*", "simulation*"]
+
+[tool.pytest.ini_options]
+testpaths = ["simulation/tests", "gateway/tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

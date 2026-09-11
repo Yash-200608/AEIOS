@@ -1,0 +1,9 @@
+# Overlay for D1 verification builds only — do NOT use for production.
+# Apply via: idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.test" reconfigure
+# Or: merge into sdkconfig then remove after evidence capture.
+CONFIG_AEIOS_TEST_MODE=y
+CONFIG_AEIOS_TEST_DEEP_SLEEP_MS=10000
+CONFIG_AEIOS_TEST_WDT_TIMEOUT_S=5
+# Required so TWDT timeout reboots (production sdkconfig leaves PANIC unset)
+CONFIG_ESP_TASK_WDT_PANIC=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=5
