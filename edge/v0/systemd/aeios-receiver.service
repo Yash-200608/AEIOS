@@ -1,0 +1,13 @@
+[Unit]
+Description=AEIOS LoRa receiver (SX1278 on SPI0 -> gateway.db)
+
+[Service]
+WorkingDirectory=%h/gateway
+ExecStart=/usr/bin/python3 -u receiver.py
+Restart=always
+RestartSec=5
+StandardOutput=append:%h/gateway/logs/receiver.log
+StandardError=append:%h/gateway/logs/receiver.log
+
+[Install]
+WantedBy=default.target

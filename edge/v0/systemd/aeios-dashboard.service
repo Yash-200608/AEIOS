@@ -1,0 +1,13 @@
+[Unit]
+Description=AEIOS gateway dashboard on port 8080
+
+[Service]
+WorkingDirectory=%h/gateway
+ExecStart=/usr/bin/python3 -u dashboard.py --port 8080
+Restart=always
+RestartSec=5
+StandardOutput=append:%h/gateway/logs/dashboard.log
+StandardError=append:%h/gateway/logs/dashboard.log
+
+[Install]
+WantedBy=default.target

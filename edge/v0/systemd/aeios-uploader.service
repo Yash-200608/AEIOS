@@ -1,0 +1,15 @@
+[Unit]
+Description=AEIOS cloud uploader (gateway.db -> Supabase)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/gateway
+EnvironmentFile=%h/.config/aeios/uploader.env
+ExecStart=/usr/bin/python3 -u %h/gateway/uploader.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

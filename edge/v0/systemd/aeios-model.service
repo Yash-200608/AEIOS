@@ -1,0 +1,14 @@
+[Unit]
+Description=AEIOS online forecaster (learns from real LoRa packets in gateway.db)
+After=aeios-receiver.service
+
+[Service]
+WorkingDirectory=%h/gateway/ml
+ExecStart=/usr/bin/python3 -u live.py --sources lora --state model_state.json --poll 5
+Restart=always
+RestartSec=10
+StandardOutput=append:%h/gateway/logs/model.log
+StandardError=append:%h/gateway/logs/model.log
+
+[Install]
+WantedBy=default.target

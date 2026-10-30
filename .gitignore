@@ -61,3 +61,26 @@ firmware/**/build-tidy/
 *.pem
 *.key
 secrets/
+
+# v0 field prototype (edge/v0, frontend/web, backend/supabase)
+.claude/
+edge/v0/*.db
+edge/v0/*.db-*
+edge/v0/smoke_cache/
+edge/v0/smoke_state.json
+edge/v0/smoke_status.json
+edge/v0/uploader_state.json
+edge/v0/ml/model_state*.json*
+edge/v0/ml/*.csv
+edge/v0/ml/*.db
+edge/v0/ml/*.log
+edge/v0/*.bak
+edge/v0/*.orig
+edge/v0/*.pre_validate
+uploader.env
+smoke.env
+frontend/web/.vercel/
+frontend/web/*.tsbuildinfo
+backend/supabase/.temp/
+ai/data/cache/
+ai/.venv/

@@ -1,0 +1,16 @@
+[Unit]
+Description=AEIOS smoke watch (back-trajectories x NASA fires x local PM2.5)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/gateway
+# Optional: AEIOS_ALERT_CMD=/path/to/buzzer.sh, SMOKE_WATCH_FIRES=5, SMOKE_WARN_MW=50, ...
+EnvironmentFile=-%h/.config/aeios/smoke.env
+ExecStart=/usr/bin/python3 -u %h/gateway/smoke_watch.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
