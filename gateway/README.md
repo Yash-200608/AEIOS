@@ -9,7 +9,7 @@ Host-testable edge pipeline used by the Raspberry Pi in the field and by the sof
 | `gateway.amp` | Frozen AMP Protocol Version 1 codec (matches firmware `aeios_amp`) |
 | `gateway.pms` | PMS5003 32-byte UART parser |
 | `gateway.ingest.Gateway` | Ingest + ACK + event engine |
-| `gateway.storage.sqlite.SqliteRepository` | ADR-014 repository |
+| `gateway.storage.sqlite.SqliteRepository` | ADR-014 repository facade (`nodes`, `observations`, `events`, `sampling`, `radio`, `power`, `logs`) |
 | `gateway.snapshot` | Dashboard contract (`data_plane`: SIMULATED \| LIVE) |
 
 Virtual radios call `Gateway.ingest(RadioRx)`. A future real SX1278 driver should deliver the same `RadioRx`.

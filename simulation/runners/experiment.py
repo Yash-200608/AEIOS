@@ -72,7 +72,11 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
             pos_y=y,
             latitude=28.61 + y * 1e-5,
             longitude=77.20 + x * 1e-5,
+            hardware_revision="HW-NODE-r2",
+            firmware_version=SIMULATION_VERSION,
+            config_version=cfg.policy,
             enabled=d not in scenario.missing_nodes,
+            status="UNKNOWN",
         )
 
     env = Environment(seed=cfg.seed, plumes=list(scenario.plumes))
@@ -91,6 +95,8 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
         provenance=DATA_SIMULATED,
         display_by_wire=display_by_wire,
         positions=positions,
+        node_firmware_version=SIMULATION_VERSION,
+        config_version=cfg.policy,
     )
 
     nodes: list[VirtualNode] = []

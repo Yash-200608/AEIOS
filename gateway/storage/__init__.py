@@ -72,6 +72,14 @@ class Repository(Protocol):
 
     def insert_event(self, rec: EventRecord) -> int: ...
 
+    def ingest_trusted(
+        self,
+        radio_row: dict[str, Any],
+        obs: Observation,
+        *,
+        states_timestamp: int,
+    ) -> None: ...
+
     def close_event(self, event_id: int, ended_at: int, status: str) -> None: ...
 
     def log(

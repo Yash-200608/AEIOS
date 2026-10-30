@@ -25,6 +25,9 @@ jobs:
       - name: Gateway AMP/PMS host tests
         run: python3 -m unittest discover -s gateway/tests -v
 
+      - name: SQLite persistence host tests
+        run: python3 -m unittest discover -s database/tests -v
+
       - name: Simulation laboratory host tests
         run: python3 -m unittest discover -s simulation/tests -v
 

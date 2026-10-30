@@ -72,12 +72,16 @@ class Gateway:
         provenance: str = DATA_SIMULATED,
         display_by_wire: Optional[dict[int, str]] = None,
         positions: Optional[dict[int, tuple[float, float]]] = None,
+        node_firmware_version: Optional[str] = None,
+        config_version: Optional[str] = None,
     ) -> None:
         self.repo = repo
         self.k_net = k_net
         self.provenance = provenance
         self.display_by_wire = display_by_wire or {}
         self.positions = positions or {}
+        self.node_firmware_version = node_firmware_version
+        self.config_version = config_version
         self.replay = ReplayWindow()
         self.quality = QualityEngine()
         self.features = FeatureExtractor()
@@ -140,30 +144,29 @@ class Gateway:
                 self.stats["duplicate"] += 1
                 schema_ok = False
 
-        try:
-            self.repo.insert_radio_packet(
-                {
-                    "received_at": rx.received_at,
-                    "wire_id": wire_id,
-                    "sequence": seq,
-                    "message_type": mtype,
-                    "protocol_version": 1,
-                    "rssi": rx.rssi_dbm,
-                    "snr": rx.snr_db,
-                    "crc_valid": crc_ok and result != ParseResult.BAD_CRC,
-                    "mac_valid": result == ParseResult.OK or result == ParseResult.BAD_TYPE,
-                    "schema_valid": schema_ok,
-                    "duplicate": dup,
-                    "raw_payload": rx.psdu,
-                    "drop_reason": drop,
-                    "provenance": rx.provenance,
-                }
-            )
-        except StorageError:
-            self.stats["db_fail"] += 1
-            return
+        radio_row = {
+            "received_at": rx.received_at,
+            "wire_id": wire_id,
+            "sequence": seq,
+            "message_type": mtype,
+            "protocol_version": 1,
+            "rssi": rx.rssi_dbm,
+            "snr": rx.snr_db,
+            "crc_valid": crc_ok and result != ParseResult.BAD_CRC,
+            "mac_valid": result == ParseResult.OK or result == ParseResult.BAD_TYPE,
+            "schema_valid": schema_ok,
+            "duplicate": dup,
+            "raw_payload": rx.psdu,
+            "drop_reason": drop,
+            "provenance": rx.provenance,
+        }
 
         if result != ParseResult.OK or dup or frame is None:
+            try:
+                self.repo.insert_radio_packet(radio_row)
+            except StorageError:
+                self.stats["db_fail"] += 1
+                return
             if result != ParseResult.OK:
                 try:
                     self.repo.log(
@@ -184,11 +187,21 @@ class Gateway:
             self._queue_ack(frame.hdr, rx.received_at)
 
         if frame.hdr.type == AmpType.SENSOR_DATA:
-            self._on_sensor(frame, rx)
+            self._on_sensor(frame, rx, radio_row)
         elif frame.hdr.type == AmpType.DIAGNOSTICS:
-            self._on_diag(frame, rx)
+            self._on_diag(frame, rx, radio_row)
         elif frame.hdr.type == AmpType.HEARTBEAT:
-            pass
+            try:
+                self.repo.insert_radio_packet(radio_row)
+                if wire_id is not None and seq is not None:
+                    self.repo.nodes.mark_seen(wire_id, last_seen=rx.received_at, last_sequence=seq)
+            except StorageError:
+                self.stats["db_fail"] += 1
+        else:
+            try:
+                self.repo.insert_radio_packet(radio_row)
+            except StorageError:
+                self.stats["db_fail"] += 1
 
     def _queue_ack(self, hdr: AmpHeader, now: int) -> None:
         payload = pack_ack(hdr.seq, hdr.type, 0)
@@ -203,39 +216,60 @@ class Gateway:
         )
         self.pending_acks.append(encode_frame(self.k_net, ack_hdr, payload))
 
-    def _on_diag(self, frame, rx: RadioRx) -> None:
+    def _on_diag(self, frame, rx: RadioRx, radio_row: dict) -> None:
         ext = unpack_extended_obs(frame.payload)
+        samp = unpack_sampling_diag(frame.payload) if not ext else None
+        rec = None
+        if samp:
+            rec = SamplingDecisionRecord(
+                wire_id=frame.hdr.src,
+                timestamp=frame.hdr.timestamp,
+                previous_mode=MODE_FROM_CODE.get(samp["prev_mode"], "NORMAL"),
+                new_mode=MODE_FROM_CODE.get(samp["new_mode"], "NORMAL"),
+                trigger=TRIGGER_FROM_CODE.get(samp["trigger"], "UNKNOWN"),
+                confidence=samp["confidence"],
+                expected_information_gain=samp["eig"],
+                estimated_energy_cost=samp["energy_mj"] / 1000.0,
+                selected_sensor=SENSOR_FROM_CODE.get(samp["selected_sensor"]),
+                provenance=self.provenance,
+            )
+        try:
+            with self.repo.transaction():
+                self.repo.insert_radio_packet(radio_row)
+                self.repo.nodes.mark_seen(
+                    frame.hdr.src,
+                    last_seen=rx.received_at,
+                    last_sequence=frame.hdr.seq,
+                )
+                if rec is not None:
+                    self.repo.insert_sampling_decision(rec)
+        except StorageError:
+            self.stats["db_fail"] += 1
+            return
         if ext:
             ext["t"] = frame.hdr.timestamp
             self.pending_ext[frame.hdr.src] = ext
-            return
-        samp = unpack_sampling_diag(frame.payload)
-        if not samp:
-            return
-        rec = SamplingDecisionRecord(
-            wire_id=frame.hdr.src,
-            timestamp=frame.hdr.timestamp,
-            previous_mode=MODE_FROM_CODE.get(samp["prev_mode"], "NORMAL"),
-            new_mode=MODE_FROM_CODE.get(samp["new_mode"], "NORMAL"),
-            trigger=TRIGGER_FROM_CODE.get(samp["trigger"], "UNKNOWN"),
-            confidence=samp["confidence"],
-            expected_information_gain=samp["eig"],
-            estimated_energy_cost=samp["energy_mj"] / 1000.0,
-            selected_sensor=SENSOR_FROM_CODE.get(samp["selected_sensor"]),
-            provenance=self.provenance,
-        )
-        try:
-            self.repo.insert_sampling_decision(rec)
-        except StorageError:
-            self.stats["db_fail"] += 1
 
-    def _on_sensor(self, frame, rx: RadioRx) -> None:
+    def _on_sensor(self, frame, rx: RadioRx, radio_row: dict) -> None:
         try:
             sp = unpack_sensor(frame.payload)
         except ValueError:
-            self.repo.log(
-                rx.received_at, "packet_ingest", "WARNING", "BAD_SENSOR", "unpack failed", frame.hdr.src, self.provenance
-            )
+            radio_row = dict(radio_row)
+            radio_row["schema_valid"] = False
+            radio_row["drop_reason"] = "BAD_SENSOR"
+            try:
+                self.repo.insert_radio_packet(radio_row)
+                self.repo.log(
+                    rx.received_at,
+                    "packet_ingest",
+                    "WARNING",
+                    "BAD_SENSOR",
+                    "unpack failed",
+                    frame.hdr.src,
+                    self.provenance,
+                )
+            except StorageError:
+                self.stats["db_fail"] += 1
             return
         display = self.display_by_wire.get(frame.hdr.src, f"NODE-{frame.hdr.src:02d}")
         ext = self.pending_ext.get(frame.hdr.src, {})
@@ -270,6 +304,8 @@ class Gateway:
             quality_flags=sp.status_flags,
             operating_mode=OperatingMode.NORMAL,
             battery_pct=sp.batt_pct,
+            firmware_version=self.node_firmware_version,
+            config_version=self.config_version,
             provenance=self.provenance,
         )
         obs.quality = self.quality.assess(obs)
@@ -282,8 +318,7 @@ class Gateway:
         self.baselines.update(obs, freeze=freeze)
 
         try:
-            self.repo.insert_observation(obs)
-            self.repo.insert_sensor_states(obs, rx.received_at)
+            self.repo.ingest_trusted(radio_row, obs, states_timestamp=rx.received_at)
         except StorageError:
             self.stats["db_fail"] += 1
             return

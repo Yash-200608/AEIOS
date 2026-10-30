@@ -96,6 +96,9 @@ class Observation:
     battery_pct: int = 100
     battery_voltage: Optional[float] = None
     battery_state: str = "NORMAL_POWER"
+    firmware_version: Optional[str] = None
+    config_version: Optional[str] = None
+    confidence: Optional[float] = None
     provenance: str = DATA_SIMULATED
 
 

@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 
+from database.paths import resolve_db_path
 from simulation.runners.experiment import ExperimentConfig, run_experiment
 from simulation.scenarios.catalog import SCENARIO_NAMES
 from simulation.node.policy import POLICIES
@@ -18,7 +19,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--nodes", type=int, default=4)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--policy", default="FIXED_RATE", choices=sorted(POLICIES))
-    p.add_argument("--db", default="aeios_dev.db")
+    p.add_argument(
+        "--db",
+        default=None,
+        help="SQLite path (default: AEIOS_DB_PATH or aeios_dev.db). Never a baked-in production path.",
+    )
     p.add_argument("--out", default="simulation/output")
     return p
 
@@ -31,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         n_nodes=args.nodes,
         seed=args.seed,
         policy=args.policy,
-        db_path=args.db,
+        db_path=str(resolve_db_path(args.db)),
         out_dir=args.out,
     )
     summary = run_experiment(cfg)

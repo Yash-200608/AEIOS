@@ -23,7 +23,9 @@ AMP frames use the frozen Protocol Version 1 codec (`gateway.amp`), matching `fi
 python -m simulation.run --scenario multimodal_event --duration 3600 --nodes 4 --seed 42
 ```
 
-Writes `aeios_dev.db` (never a production path) and `simulation/output/`.
+Writes `aeios_dev.db` by default (override with `--db` or `AEIOS_DB_PATH`; never a baked-in production path) and `simulation/output/`.
+
+Inspect the file with `python -m database.inspect`.
 
 Policies: `FIXED_RATE`, `BATTERY_AWARE`, `THRESHOLD_ADAPTIVE`, `CROSS_MODAL_ADAPTIVE`, `INFORMATION_ENERGY`.
 
@@ -33,6 +35,7 @@ Scenarios: see `simulation/scenarios/catalog.py` (`normal`, `particulate_event`,
 
 ```bash
 python -m unittest discover -s gateway/tests -v
+python -m unittest discover -s database/tests -v
 python -m unittest discover -s simulation/tests -v
 ```
 

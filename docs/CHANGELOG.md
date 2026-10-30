@@ -1,5 +1,9 @@
 # Changelog (docs)
 
+## 2026-09-12
+
+- SQLite v1 persistence: numbered migrations `001`–`004`, automatic bootstrap, repository split, transactional trusted ingest, `python -m database.inspect`. Development default remains `aeios_dev.db` (path via CLI/`AEIOS_DB_PATH`). No PostgreSQL/TimescaleDB runtime dependency.
+
 ## 2026-09-11
 
 - Ingested Context Files 01–05 under `docs/context/`.
