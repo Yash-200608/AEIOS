@@ -1,0 +1,8 @@
+-- Run once per project with your own values (never commit real emails or tokens).
+-- insert into public.allowed_users(email) values ('you@example.com');
+-- insert into public.nodes(node, label) values ('N1','Node 1'), ('N2','Node 2');
+--
+-- Device token: generate 32 random bytes as hex on the Pi (this value stays on the Pi, in
+-- ~/.config/aeios/uploader.env as AEIOS_DEVICE_TOKEN), then store only its SHA-256 hash:
+--   printf %s "$TOKEN" | sha256sum
+-- insert into public.device_tokens(token_sha256, label) values ('<sha256 hex>', 'node-gateway Pi');
