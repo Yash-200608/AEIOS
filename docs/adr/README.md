@@ -23,6 +23,7 @@ Accepted ADRs 001–008 are immutable except status and review-history appends.
 | [ADR-015](ADR-015-mqtt-not-core.md) | MQTT not on core v1 ingest path | Accepted |
 | [ADR-016](ADR-016-compose-dev-systemd-field.md) | Compose for dev; systemd on Pi | Accepted |
 | [ADR-017](ADR-017-on-node-policy-shap.md) | On-node deterministic policy; SHAP when models deploy | Accepted |
+| [ADR-018](ADR-018-v0-field-prototype.md) | v0 field prototype (CSV packets, BME680 + GPS nodes, cloud mirror) | Accepted (interim) |
 
 Pending edits to frozen Gate A–C / FAS text: [CONTROLLED_DOC_CHANGE_QUEUE.md](CONTROLLED_DOC_CHANGE_QUEUE.md).
 

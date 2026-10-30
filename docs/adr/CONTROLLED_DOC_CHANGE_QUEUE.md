@@ -14,5 +14,6 @@
 | [DOC-006 FAS.md](../firmware/FAS.md) | BME680, GPS UART driver, SX1276, GPIO placeholders, maint GPS task, NVS `aeios_loc` from GNSS | BME688, MQ135, no GPS, HW-NODE-r2 pins, TIME_SYNC without GNSS | 010, 011, 012, 013 |
 | [ADR-007](ADR-007-gps-installation-mode.md) | Install-mode GPS | **Superseded** by ADR-010 (status append only) | 010 |
 | [ADR-005](ADR-005-scd41-co2-sensor.md) | “Drop MQ135” | SCD41 kept; MQ135 clause superseded by ADR-011 | 011 |
+| [AGENTS.md](../../AGENTS.md) “Locked for implementation” hardware line | No GPS/GNSS; SCD41/BME688 on nodes; AMP only | Add a pointer: live v0 prototype (`edge/v0/`) uses CSV packets, BME680 + GPS, no SCD41 as an interim deviation | 018 |
 
 Do **not** treat this queue as permission to edit those files in the same change without an explicit document-revision task.
