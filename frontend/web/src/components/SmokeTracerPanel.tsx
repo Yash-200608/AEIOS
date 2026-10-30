@@ -22,6 +22,9 @@ const ist = (t: number, withDay = true) => new Date(t).toLocaleString('en-IN', {
 
 type Arrival = { node: { pm2_5: number | null; node: string; t: string } | null; cams: number | null };
 
+const DASH: Record<string, string | undefined> = { '120m': undefined, '950': '10 6', '925': '2 6' };
+const DASH_NAME: Record<string, string> = { '120m': 'solid line', '950': 'dashed line', '925': 'dotted line' };
+
 export default function SmokeTracerPanel({ site }: { site: SiteId }) {
   const [grid, setGrid] = useState<WindGrid | null>(null);
   const [fires, setFires] = useState<Fire[] | null>(null);
@@ -109,6 +112,7 @@ export default function SmokeTracerPanel({ site }: { site: SiteId }) {
           </div>
         </div>
 
+        <div className="state-box state-warm" role="note"><b>Air-mass pathway estimate, not source confirmation.</b><span>Paths are kinematic and ignore vertical motion and turbulence, so treat each as a widening corridor. A match means the air passed near a fire, not how much of the PM came from it.</span></div>
         {error && <div className="aq-warning" style={{ marginTop: 10 }}>Could not load tracer data: {error}</div>}
         {loading && <div className="panel-subtitle" style={{ marginTop: 10 }}>Loading winds for 88 grid points and the latest NASA fire detections…</div>}
 
@@ -125,7 +129,7 @@ export default function SmokeTracerPanel({ site }: { site: SiteId }) {
               </CircleMarker>
             ))}
             {(results || []).map((r) => (
-              <Polyline key={r.level.key} positions={r.path.map((p: PathPoint) => [p.lat, p.lon] as [number, number])} pathOptions={{ color: r.level.color, weight: 3, opacity: 0.9 }} />
+              <Polyline key={r.level.key} positions={r.path.map((p: PathPoint) => [p.lat, p.lon] as [number, number])} pathOptions={{ color: r.level.color, weight: 3, opacity: 0.9, dashArray: DASH[r.level.key] }} />
             ))}
             {(results || []).flatMap((r) => r.path.filter((_, i) => i > 0 && i % 36 === 0).map((p) => (
               <CircleMarker key={`${r.level.key}-${p.t}`} center={[p.lat, p.lon]} radius={3} pathOptions={{ color: r.level.color, fillColor: '#050505', fillOpacity: 1, weight: 2 }}>
@@ -145,9 +149,10 @@ export default function SmokeTracerPanel({ site }: { site: SiteId }) {
               const hrs = r.matches.map((m) => m.hoursBefore);
               return (
                 <div className="tracer-card" key={r.level.key}>
-                  <div className="tracer-card-head"><i style={{ background: r.level.color }} /> {r.level.label}</div>
+                  <div className="tracer-card-head"><i style={{ background: r.level.color }} /> {r.level.label}<small className="dash-key">{DASH_NAME[r.level.key]}</small></div>
                   <div className="tracer-origin">{km(s.lat, s.lon, end.lat, end.lon).toFixed(0)} km {bearing(s.lat, s.lon, end.lat, end.lon)}<small> {reached.toFixed(0)} h ago</small></div>
-                  <div className="tracer-fires"><b>{r.matches.length}</b> fires on the path{r.matches.length ? ` · ${frp.toFixed(0)} MW` : ''}</div>
+                  <div className="tracer-fires"><b>{r.matches.length}</b> satellite fire detections matched this path{r.matches.length ? ` · ${frp.toFixed(0)} MW` : ''}</div>
+                  {r.matches.length === 0 && <em>No detection matched. Fires between satellite passes or under cloud would not appear.</em>}
                   {r.matches.length > 0 && <em>Passed them {Math.min(...hrs).toFixed(0)}–{Math.max(...hrs).toFixed(0)} h before arriving</em>}
                   {reached < duration - 0.5 && <em>Left the wind grid early</em>}
                 </div>
@@ -157,9 +162,11 @@ export default function SmokeTracerPanel({ site }: { site: SiteId }) {
               <div className="tracer-card-head">PM2.5 at arrival</div>
               {arrivalPm === null ? <em>Checking…</em> : (
                 <>
-                  <div className="tracer-fires">AEIOS node: <b>{arrivalPm.node ? `${Math.round(arrivalPm.node.pm2_5 ?? 0)} µg/m³` : 'no reading'}</b></div>
-                  {arrivalPm.node && <em>{arrivalPm.node.node} · {ist(Date.parse(arrivalPm.node.t))} IST</em>}
-                  <div className="tracer-fires">CAMS model: <b>{arrivalPm.cams === null ? '—' : `${Math.round(arrivalPm.cams)} µg/m³`}</b></div>
+                  <div className="pm-row"><span className="provenance-tag prov-local">AEIOS NODE · MEASURED</span>
+                    <b>{arrivalPm.node ? `${Math.round(arrivalPm.node.pm2_5 ?? 0)} µg/m³` : 'No reading (not zero)'}</b>
+                    {arrivalPm.node && <em>{arrivalPm.node.node} · {ist(Date.parse(arrivalPm.node.t))} IST</em>}</div>
+                  <div className="pm-row"><span className="provenance-tag prov-model">CAMS · REGIONAL MODEL</span>
+                    <b>{arrivalPm.cams === null ? 'Unavailable' : `${Math.round(arrivalPm.cams)} µg/m³`}</b></div>
                 </>
               )}
             </div>
@@ -178,6 +185,7 @@ export default function SmokeTracerPanel({ site }: { site: SiteId }) {
         </div>
 
         <p className="aq-note">
+          Heights: hPa is an air-pressure level (950 hPa is roughly 350 m up), not a distance; m is metres above ground level (AGL). Fire detections come from the VIIRS satellite instrument, which only sees what is under its passes and clear sky.
           Each line is a kinematic back-trajectory: the wind at that height (Open-Meteo, 1° grid, past 3 days) stepped backwards every 10 minutes from
           the site. It ignores vertical motion and turbulence, so read it as a corridor whose width grows to about 20% of the distance. A fire counts
           when the air passed within {MATCH.radiusKm} km of it between {MATCH.beforeH} h before and {MATCH.afterH} h after the satellite saw it. Fires burning

@@ -13,10 +13,10 @@ function at(h: Hourly, key: string, i: number): number | null {
 // Variables the forecast already returns but the dashboard did not show, plus storm and heat indicators.
 const EXTRA: Array<{ key: string; label: string; unit: string; digits?: number; scale?: number; hint: string }> = [
   { key: 'visibility', label: 'Visibility', unit: 'km', digits: 1, scale: 0.001, hint: 'Haze and fog indicator' },
-  { key: 'wet_bulb_temperature_2m', label: 'Wet-bulb temperature', unit: '°C', digits: 1, hint: 'Heat stress: how well sweat can cool the body' },
+  { key: 'wet_bulb_temperature_2m', label: 'Wet-bulb temperature', unit: '°C', digits: 1, hint: 'Temperature including evaporative cooling; relevant to heat stress' },
   { key: 'vapour_pressure_deficit', label: 'Vapour-pressure deficit', unit: 'kPa', digits: 2, hint: 'Air dryness; high values stress crops' },
-  { key: 'cape', label: 'CAPE', unit: 'J/kg', hint: 'Energy available for thunderstorms' },
-  { key: 'lifted_index', label: 'Lifted index', unit: '', digits: 1, hint: 'Below 0 means unstable air' },
+  { key: 'cape', label: 'CAPE', unit: 'J/kg', hint: 'Energy available to rising air; high values mean storm potential' },
+  { key: 'lifted_index', label: 'Lifted index', unit: '', digits: 1, hint: 'Rising-air vs surroundings temperature; negative means unstable air' },
   { key: 'total_column_integrated_water_vapour', label: 'Column water vapour', unit: 'kg/m²', digits: 1, hint: 'Moisture available for rain' },
   { key: 'soil_temperature_0cm', label: 'Soil surface temperature', unit: '°C', digits: 1, hint: 'Ground heating' },
   { key: 'soil_moisture_0_to_1cm', label: 'Soil moisture 0–1 cm', unit: 'm³/m³', digits: 2, hint: 'Dry topsoil lifts more dust' },
@@ -77,28 +77,32 @@ export default function DispersionPanel({ hourly, index }: { hourly: Hourly; ind
 
       <div className="panel" style={{ marginTop: 12 }}>
         <div className="panel-header">
-          <div><div className="panel-title">Next 48 hours</div>
-            <div className="panel-subtitle">{poorHours} h below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s · {invHours} h with a surface inversion</div></div>
-          <span className="legend-inline"><i className="legend-pm25" /> Ventilation <i className="legend-pm10" /> Inversion °C</span>
+          <div><div className="panel-title">{chart.length && poorHours === chart.length ? 'Dispersion is forecast to stay unfavourable for the next 48 hours' : poorHours === 0 ? 'Ventilation stays above the poor threshold for the next 48 hours' : `Ventilation is poor for ${poorHours} of the next ${chart.length} hours`}</div>
+            <div className="panel-subtitle">{poorHours} h below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s (lower is worse) · {invHours} h with a surface inversion · regional model, not AEIOS sensors</div></div>
+          <span className="legend-inline"><i className="legend-pm25" /> Ventilation (solid, left axis) <i className="legend-pm10 dashed" /> Inversion (dashed, right axis)</span>
         </div>
         {chart.length ? (
           <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart} margin={{ top: 12, right: 4, left: -6, bottom: 2 }}>
             <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} />
             <XAxis dataKey="hour" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={5} />
-            <YAxis yAxisId="vc" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
-            <YAxis yAxisId="inv" orientation="right" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
+            <YAxis yAxisId="vc" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `${Math.round(v / 1000)}k`} label={{ value: 'Ventilation (m²/s)', angle: -90, position: 'insideLeft', fill: '#b3a8c0', fontSize: 10, dx: 4 }} />
+            <YAxis yAxisId="inv" orientation="right" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={40} label={{ value: 'Inversion (°C)', angle: 90, position: 'insideRight', fill: '#b3a8c0', fontSize: 10, dx: -4 }} />
             <Tooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
             <ReferenceLine yAxisId="vc" y={VENTILATION_POOR} stroke="#ec8b74" strokeDasharray="4 4" label={{ value: 'IMD poor < 6,000', fill: '#ec8b74', fontSize: 9, position: 'insideTopLeft' }} />
             <ReferenceLine yAxisId="inv" y={0} stroke="#5b4a6f" />
             <Area yAxisId="vc" dataKey="vc" type="monotone" stroke="#00e5ff" fill="#00e5ff" fillOpacity={0.12} strokeWidth={2} name="Ventilation m²/s" />
-            <Line yAxisId="inv" dataKey="inv" type="monotone" stroke="#a77bf0" strokeWidth={1.6} dot={false} name="Inversion °C" />
+            <Line yAxisId="inv" dataKey="inv" type="monotone" stroke="#a77bf0" strokeWidth={1.6} strokeDasharray="5 3" dot={false} name="Inversion °C" />
           </ComposedChart></ResponsiveContainer></div>
         ) : <div className="empty-chart">Waiting for forecast values…</div>}
-        <div className="aq-note">
-          Ventilation coefficient = mixing height × mean wind in the lowest 180 m. IMD treats values below 6,000 m²/s with wind under 10 km/h as
-          unfavourable for dispersion. Both come from the regional weather model, not from AEIOS sensors; together with node PM readings they explain
-          why a smoke episode builds up or clears.
-        </div>
+        <details className="how-it-works">
+          <summary>How this is calculated</summary>
+          <ul>
+            <li><b>Ventilation coefficient</b> = mixing height × mean wind in the lowest 180 m. It indicates how well the air can carry pollutants away.</li>
+            <li><b>Inversion</b>: warmer air above cooler surface air suppresses vertical mixing and traps pollution near the ground.</li>
+            <li><b>Unfavourable</b> means ventilation below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s with mean wind under 10 km/h (IMD criterion).</li>
+          </ul>
+          <p>Both inputs come from the regional weather model, not from AEIOS sensors.</p>
+        </details>
       </div>
 
       <div className="panel" style={{ marginTop: 12 }}>

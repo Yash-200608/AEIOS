@@ -12,6 +12,8 @@ import {
 import WeatherScene, { type SceneWeather } from './components/WeatherScene';
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
+import SiteStatus from './components/SiteStatus';
+import { ventilation, VENTILATION_POOR } from './lib/derived';
 import DispersionPanel from './components/DispersionPanel';
 import SatellitePanel from './components/SatellitePanel';
 import SmokeTracerPanel from './components/SmokeTracerPanel';
@@ -105,6 +107,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const [simError, setSimError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   const [nav, setNav] = useState('overview');
+  const [sceneKey, setSceneKey] = useState(0);
 
   const siteConfig = SITES[site];
 
@@ -205,6 +208,20 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
     ],
   };
 
+  const next72 = useMemo(() => {
+    const n = Math.min(72, hourly.time?.length || 0);
+    const col = (k: string) => Array.from({ length: n }, (_, i) => numeric(hourly[k]?.[i], NaN)).filter(Number.isFinite);
+    const t = col('temperature_2m'), ch = col('precipitation_probability'), w = col('wind_speed_10m');
+    let poor = 0;
+    for (let i = 0; i < n; i += 1) { const v = ventilation(hourly, i); if (v !== null && v < VENTILATION_POOR) poor += 1; }
+    return {
+      hours: n, poor,
+      minT: t.length ? Math.round(Math.min(...t)) : '—', maxT: t.length ? Math.round(Math.max(...t)) : '—',
+      rain: round(col('precipitation').reduce((a, b) => a + b, 0), 1), chance: ch.length ? Math.round(Math.max(...ch)) : '—',
+      wind: w.length ? round(Math.max(...w), 1) : '—',
+    };
+  }, [hourly]);
+
   const hourlyChart = useMemo(() => {
     if (!hourly.time) return [];
     return hourly.time.map((time, i) => ({
@@ -262,18 +279,27 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <div className="brand-mark"><span /><span /><span /></div>
           <div><div className="brand-name">AEIOS<span> / SENTINEL</span></div><div className="brand-caption">ENVIRONMENTAL INTELLIGENCE</div></div>
         </div>
-        <div className="side-group-label">WORKSPACE</div>
-        <nav className="side-nav">
-          <button className={nav === 'overview' ? 'active' : ''} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
-          <button className={nav === 'dispersion' ? 'active' : ''} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Dispersion</button>
-          <button className={nav === 'atmosphere' ? 'active' : ''} onClick={() => navigate('atmosphere')}><Globe2 size={17} /> 3D atmosphere</button>
-          <button className={nav === 'forecast' ? 'active' : ''} onClick={() => navigate('forecast')}><CalendarDays size={17} /> Forecast</button>
-          <button className={nav === 'air-quality' ? 'active' : ''} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
-          <button className={nav === 'satellite' ? 'active' : ''} onClick={() => navigate('satellite')}><Satellite size={17} /> Satellite</button>
-          <button className={nav === 'smoke' ? 'active' : ''} onClick={() => navigate('smoke')}><Flame size={17} /> Smoke origin</button>
-          <button className={nav === 'simulation' ? 'active' : ''} onClick={() => navigate('simulation')}><Layers3 size={17} /> Simulation lab</button>
-          <button className={nav === 'aeios' ? 'active' : ''} onClick={() => navigate('aeios')}><Zap size={17} /> AEIOS model</button>
-          <button className={nav === 'station' ? 'active' : ''} onClick={() => navigate('station')}><RadioTower size={17} /> Station network</button>
+        <div className="side-group-label">MONITOR</div>
+        <nav className="side-nav" aria-label="Monitor">
+          <button className={nav === 'overview' ? 'active' : ''} aria-current={nav === 'overview' ? 'page' : undefined} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
+          <button className={nav === 'air-quality' ? 'active' : ''} aria-current={nav === 'air-quality' ? 'page' : undefined} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
+          <button className={nav === 'dispersion' ? 'active' : ''} aria-current={nav === 'dispersion' ? 'page' : undefined} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Pollution dispersion</button>
+        </nav>
+        <div className="side-group-label">EXPLORE</div>
+        <nav className="side-nav" aria-label="Explore">
+          <button className={nav === 'forecast' ? 'active' : ''} aria-current={nav === 'forecast' ? 'page' : undefined} onClick={() => navigate('forecast')}><CalendarDays size={17} /> Forecast</button>
+          <button className={nav === 'smoke' ? 'active' : ''} aria-current={nav === 'smoke' ? 'page' : undefined} onClick={() => navigate('smoke')}><Flame size={17} /> Smoke origin</button>
+          <button className={nav === 'satellite' ? 'active' : ''} aria-current={nav === 'satellite' ? 'page' : undefined} onClick={() => navigate('satellite')}><Satellite size={17} /> Satellite</button>
+          <button className={nav === 'atmosphere' ? 'active' : ''} aria-current={nav === 'atmosphere' ? 'page' : undefined} onClick={() => navigate('atmosphere')}><Globe2 size={17} /> 3D atmosphere</button>
+        </nav>
+        <div className="side-group-label">TOOLS</div>
+        <nav className="side-nav" aria-label="Tools">
+          <button className={nav === 'simulation' ? 'active' : ''} aria-current={nav === 'simulation' ? 'page' : undefined} onClick={() => navigate('simulation')}><Layers3 size={17} /> Simulation lab</button>
+        </nav>
+        <div className="side-group-label">INFRASTRUCTURE</div>
+        <nav className="side-nav" aria-label="Infrastructure">
+          <button className={nav === 'aeios' ? 'active' : ''} aria-current={nav === 'aeios' ? 'page' : undefined} onClick={() => navigate('aeios')}><Zap size={17} /> AEIOS model</button>
+          <button className={nav === 'station' ? 'active' : ''} aria-current={nav === 'station' ? 'page' : undefined} onClick={() => navigate('station')}><RadioTower size={17} /> Station network</button>
         </nav>
         <div className="sidebar-divider" />
         <div className="side-group-label">OBSERVATION ZONES</div>
@@ -320,9 +346,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           {loadState === 'error' && <div className="error-banner"><AlertTriangle size={16} /> Weather feed unavailable. The forecast comes straight from Open-Meteo, so check this device's internet connection. <button onClick={() => void load()}>Retry</button></div>}
           {forecastMeta?.warning && <div className="notice-banner"><AlertTriangle size={15} /> {forecastMeta.warning}</div>}
 
-          <div className="current-weather-banner">
+          <SiteStatus site={site} siteTitle={siteConfig.title} hourly={hourly} index={selectedHour} />
+
+          <div className="current-weather-banner weather-secondary">
             <div className="current-main">
-              <div className="current-kicker">MODEL-ESTIMATED CURRENT CONDITIONS</div>
+              <div className="current-kicker">WEATHER · REGIONAL MODEL ESTIMATE</div>
               <div className="current-temp">{round(current.temperature_2m)}<span>°</span></div>
               <div className="current-condition"><WeatherGlyph code={current.weather_code} size={21} /> {currentDescription}</div>
               <div className="current-feels">Feels like {round(current.apparent_temperature)}°C · {selectedTime ? formatDay(selectedTime.slice(0, 10), { weekday: 'long', day: 'numeric', month: 'long' }) : 'Local forecast'}</div>
@@ -357,15 +385,16 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <div className="atmosphere-card">
             <div className="atmosphere-head">
               <div><div className="panel-title">Atmospheric volume · {siteConfig.title}</div><div className="panel-subtitle">Wind vectors, cloud layers and surface conditions · forecast-derived</div></div>
-              <div className="layer-switcher">
+              <div className="layer-switcher" role="group" aria-label="Atmospheric layer">
                 {([{ value: 'wind', label: 'Wind' }, { value: 'cloud', label: 'Cloud' }, { value: 'temperature', label: 'Thermal' }, { value: 'rain', label: 'Rain' }] as const).map((item) => <button key={item.value} onClick={() => setLayer(item.value)} className={layer === item.value ? 'selected' : ''}>{item.label}</button>)}
               </div>
             </div>
             <div className="scene-frame">
-              <WeatherScene weather={sceneWeather} />
+              <WeatherScene key={sceneKey} weather={sceneWeather} />
               <div className="scene-tag scene-tag-top"><span className="status-led" /> 3D MODEL VIEW · {simulation ? 'SCENARIO OVERLAY' : 'FORECAST FIELD'}</div>
-              <div className="scene-tag scene-tag-bottom"><span className="scene-key"><i className="key-wind" /> WIND PARTICLES</span><span className="scene-key"><i className="key-cloud" /> CLOUD LAYERS</span><span className="scene-key"><i className="key-site" /> STATION SITES</span><span className="scene-gesture">DRAG TO ROTATE · SCROLL TO ZOOM</span></div>
-              <div className="scene-altitude">500 hPa<br /><span>700 hPa</span><br /><span>850 hPa</span><br /><span>925 hPa</span><br /><span>10–80 m AGL</span></div>
+              <div className="scene-tag scene-tag-bottom"><span className="scene-key"><i className="key-wind" /> WIND PARTICLES</span><span className="scene-key"><i className="key-cloud" /> CLOUD LAYERS</span><span className="scene-key"><i className="key-site" /> STATION SITES</span><span className="scene-gesture">DRAG / SWIPE TO ROTATE · SCROLL / PINCH TO ZOOM</span></div>
+              <button className="scene-reset" onClick={() => setSceneKey((k) => k + 1)}>Reset view</button>
+              <div className="scene-altitude" aria-hidden="true">500 hPa<br /><span>700 hPa</span><br /><span>850 hPa</span><br /><span>925 hPa</span><br /><span>10–80 m AGL</span></div>
             </div>
             <div className="scene-controls">
               <div className="timeline-label"><b>{selectedTime ? formatDay(selectedTime.slice(0, 10), { weekday: 'short', day: 'numeric', month: 'short' }) : 'Forecast'}</b><span>{formatHour(selectedTime)}</span></div>
@@ -373,7 +402,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
               <div className="timeline-actions"><span>+0h</span><span>+24h</span><span>+48h</span><span>+72h</span><button onClick={clearSimulation} disabled={!simulation}>Clear scenario</button></div>
             </div>
             {simulation && <div className="scenario-active-note"><Zap size={14} /> Scenario overlay active: {simulation.scenario_label}. These are controlled perturbations, not forecast updates. <button onClick={clearSimulation}>Return to model</button></div>}
-            <div className="profile-heading"><b>VERTICAL WIND PROFILE</b><span>Forecast pressure levels · geopotential height where available</span></div>
+            <div className="profile-heading"><b>VERTICAL WIND PROFILE</b><span>m AGL = metres above ground level. hPa = air-pressure level, not a height; its geopotential height is the model's height for that pressure surface.</span></div>
             <div className="vertical-profile-grid">
               {sceneWeather.windLayers.map((windLayer) => <div key={windLayer.label}><span>{windLayer.label.toUpperCase()}</span><b>{round(windLayer.speed, 1)} <small>m/s</small></b><em>{round(windLayer.temperature, 1)}°C · {round(windLayer.humidity)}% RH</em>{windLayer.label.includes('hPa') && <em>Geopotential {round(windLayer.altitude)} m</em>}</div>)}
             </div>
@@ -383,6 +412,16 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
         <section id="forecast" className="page-section">
           <SectionTitle kicker="NUMERICAL WEATHER PREDICTION" title="Extended forecast" right={<div className="range-switch">{DAY_OPTIONS.map((d) => <button key={d} onClick={() => setDays(d)} className={days === d ? 'active' : ''}>{d}d</button>)}</div>} />
+          <div className="next72" aria-label="Next 72 hours summary">
+            <div className="sp-label">NEXT 72 HOURS · REGIONAL MODEL</div>
+            <div className="next72-grid">
+              <div><span>Temperature</span><b>{next72.minT}–{next72.maxT}<small>°C</small></b></div>
+              <div><span>Rain amount</span><b>{next72.rain}<small>mm</small></b></div>
+              <div><span>Peak rain chance</span><b>{next72.chance}<small>%</small></b></div>
+              <div><span>Peak wind</span><b>{next72.wind}<small>m/s</small></b></div>
+              <div><span>Poor-dispersion hours</span><b>{next72.poor}<small>of {next72.hours} h</small></b></div>
+            </div>
+          </div>
           <div className="forecast-layout">
             <div className="panel forecast-chart-panel">
               <div className="panel-header"><div><div className="panel-title">Temperature outlook</div><div className="panel-subtitle">Daily maximum and minimum · °C</div></div><span className="legend-inline"><i className="legend-max" /> High <i className="legend-min" /> Low</span></div>
@@ -397,9 +436,9 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
               </ComposedChart></ResponsiveContainer></div> : <div className="empty-chart">Waiting for forecast values…</div>}
             </div>
             <div className="panel precipitation-panel">
-              <div className="panel-title">Rainfall probability</div><div className="panel-subtitle">Daily maximum chance · %</div>
+              <div className="panel-title">Rain chance vs amount</div><div className="panel-subtitle">Bars: highest chance of rain that day (%). This is not how much will fall; amounts are in the table below.</div>
               <div className="rain-bars">{dailyRows.slice(0, 8).map((d) => <div className="rain-bar-item" key={d.date}><div className="rain-bar-track"><div className="rain-bar-fill" style={{ height: `${Math.max(2, d.rainChance)}%` }} /></div><b>{Math.round(d.rainChance)}%</b><span>{d.date.slice(5).replace('-', '/')}</span></div>)}</div>
-              <div className="rain-total"><CloudRain size={17} /><span>Forecast rainfall</span><b>{round(dailyRows.slice(0, 3).reduce((sum, d) => sum + d.rain, 0), 1)} mm</b><small>Next 72 hours</small></div>
+              <div className="rain-total"><CloudRain size={17} /><span>Forecast rainfall</span><b>{round(dailyRows.slice(0, 3).reduce((sum, d) => sum + d.rain, 0), 1)} mm</b><small>Next 72 hours · total amount, a different measure from chance</small></div>
             </div>
           </div>
           <div className="panel hourly-panel">
@@ -407,12 +446,12 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
             {hourlyChart.length ? <div className="chart-wrap hourly-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={hourlyChart} margin={{ top: 10, right: 8, left: -20, bottom: 2 }}>
               <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} />
               <XAxis dataKey="hour" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={3} />
-              <YAxis yAxisId="temp" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="rain" orientation="right" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="temp" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft', fill: '#b3a8c0', fontSize: 10, dx: 22 }} />
+              <YAxis yAxisId="rain" orientation="right" domain={[0, 100]} tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} label={{ value: 'Rain chance (%)', angle: 90, position: 'insideRight', fill: '#b3a8c0', fontSize: 10, dx: -22 }} />
               <ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
               <Area yAxisId="temp" dataKey="temperature" type="monotone" stroke="#eab16e" fill="#eab16e" fillOpacity={0.1} name="Temperature °C" />
               <Line yAxisId="temp" dataKey="feels" type="monotone" stroke="#00e5ff" strokeWidth={1.8} dot={false} name="Feels like °C" />
-              <Line yAxisId="rain" dataKey="rainChance" type="monotone" stroke="#b889ed" strokeWidth={1.5} dot={false} name="Rain chance %" />
+              <Line yAxisId="rain" dataKey="rainChance" type="monotone" stroke="#b889ed" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="Rain chance %" /><Legend verticalAlign="top" height={24} iconType="plainline" wrapperStyle={{ fontSize: 11, color: '#b3a8c0' }} />
             </ComposedChart></ResponsiveContainer></div> : <div className="empty-chart">Hourly profile unavailable.</div>}
           </div>
           <div className="panel outlook-panel">
@@ -430,11 +469,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <SectionTitle kicker="ATMOSPHERIC COMPOSITION" title="Air quality intelligence" right={<span className="source-badge">CAMS GLOBAL MODEL · ~45 KM · ABOUT 5 DAYS</span>} />
           <div className="air-grid">
             <div className="panel aqi-panel">
-              <div className="panel-title">External air-quality model</div><div className="panel-subtitle">CAMS global · ~45 km grid, 3-hourly · not a station observation</div>
-              <div className="aqi-score-row"><div className="aqi-score">{Number.isFinite(aqiCurrent) ? Math.round(aqiCurrent) : '—'}</div><div><b>US AQI model</b><span>{Number.isFinite(aqiCurrent) ? (aqiCurrent <= 50 ? 'Good' : aqiCurrent <= 100 ? 'Moderate' : aqiCurrent <= 150 ? 'Unhealthy for sensitive groups' : aqiCurrent <= 200 ? 'Unhealthy' : 'Very unhealthy') : 'Model data unavailable'}</span></div></div>
+              <span className="provenance-tag prov-model">REGIONAL MODEL ESTIMATE</span><div className="panel-title">Regional air quality · CAMS · ~45 km grid · 3-hourly</div><div className="panel-subtitle">Not a station observation and not measured at this site</div>
+              <div className="aqi-score-row"><div className="aqi-score">{Number.isFinite(aqiCurrent) ? Math.round(aqiCurrent) : '—'}</div><div><b>US AQI (modelled)</b><span>{Number.isFinite(aqiCurrent) ? (aqiCurrent <= 50 ? 'Good' : aqiCurrent <= 100 ? 'Moderate' : aqiCurrent <= 150 ? 'Unhealthy for sensitive groups' : aqiCurrent <= 200 ? 'Unhealthy' : 'Very unhealthy') : 'Model data unavailable'}</span></div></div>
               <div className="aqi-scale"><i /><i /><i /><i /><i /></div><div className="aqi-scale-labels"><span>Good</span><span>Moderate</span><span>US AQI scale</span></div>
               {aqWarning && <div className="aq-warning"><AlertTriangle size={13} /> {aqWarning}</div>}
-              <div className="aq-note">This is a regional model estimate. The AEIOS PMS5003 provides direct local particulate measurements when node telemetry is connected. MQ135 is a relative gas-response sensor, not a calibrated pollutant analyzer.</div>
+              <div className="local-compare"><span className="provenance-tag prov-local">AEIOS STATION MEASUREMENT</span><span>Local PM2.5 is reported in Site status and in AEIOS sensors. If it says "No current reading", nothing on this panel replaces it.</span></div><div className="aq-note">MQ135 is a relative gas-response sensor, not a calibrated pollutant analyser; do not read its output as ppm of any gas.</div>
             </div>
             <div className="panel aq-chart-panel">
               <div className="panel-header"><div><div className="panel-title">Particulate forecast profile</div><div className="panel-subtitle">PM2.5 and PM10 · µg/m³ · first 72 hours</div></div><span className="legend-inline"><i className="legend-pm25" /> PM2.5 <i className="legend-pm10" /> PM10</span></div>
@@ -469,6 +508,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
         <section id="simulation" className="page-section">
           <SectionTitle kicker="DIGITAL TWIN · WHAT-IF ANALYSIS" title="Weather scenario laboratory" right={<span className="simulation-badge"><Zap size={12} /> SIMULATION ONLY</span>} />
+          <div className="sim-banner" role="note"><Zap size={14} /> <b>Simulation only.</b> A deterministic what-if perturbation. It is not a new observation or a validated forecast, and it never changes official forecast data, sensor observations or trained-model predictions.</div>
           <div className="simulation-layout">
             <div className="panel simulation-controls">
               <div className="panel-title">Configure an event</div><div className="panel-subtitle">Perturb the numerical forecast baseline to explore environmental response.</div>
@@ -483,13 +523,13 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
               <div className="simulation-method"><ShieldCheck size={14} /><span>Deterministic scenario perturbation. Does not alter official forecast data, sensor observations or trained-model predictions.</span></div>
             </div>
             <div className="panel simulation-output">
-              <div className="panel-header"><div><div className="panel-title">Scenario response</div><div className="panel-subtitle">Model baseline vs perturbed scenario</div></div>{simulation && <span className="simulation-badge">RESULT GENERATED</span>}</div>
+              <div className="panel-header"><div><div className="panel-title">Scenario response · simulated</div><div className="panel-subtitle">Model baseline vs perturbed scenario · not an official forecast</div></div>{simulation && <span className="simulation-badge">RESULT GENERATED</span>}</div>
               {simulation ? <>
                 <div className="simulation-result-head"><div><span>ACTIVE SCENARIO</span><b>{simulation.scenario_label}</b></div><div><span>EVENT WINDOW</span><b>{simulation.duration_hours} h · +{simulation.start_hour} h</b></div><div><span>PEAK {simulationMetric?.unit?.toUpperCase()}</span><b>{simulationPeak == null ? '—' : round(simulationPeak, 1)}</b></div></div>
                 <div className="sim-metric-label">{simulationMetric?.label}</div>
                 <div className="chart-wrap sim-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={simulation.timeline.slice(0, 36)} margin={{ top: 12, right: 8, left: -18, bottom: 2 }}><CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="time" tickFormatter={(v) => formatHour(v)} tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={5} /><YAxis tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} /><ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} labelFormatter={(v) => String(v)} />{simulationMetric?.baseline && <Line dataKey={simulationMetric.baseline} name="Model baseline" stroke="#a797b9" strokeDasharray="4 4" dot={false} /> }<Line dataKey={simulationMetric?.key || 'temperature_2m'} name="Scenario" stroke="#eab16e" strokeWidth={2} dot={false} /></ComposedChart></ResponsiveContainer></div>
                 <div className="simulation-method"><AlertTriangle size={14} /> {simulation.method} {simulation.pollution_note ? ` ${simulation.pollution_note}` : ''}</div>
-              </> : <div className="simulation-empty"><div className="simulation-orbit"><Layers3 size={32} /></div><b>No scenario executed</b><span>Choose a weather event, set its intensity and duration, then run the deterministic scenario engine.</span><div className="scenario-pills"><span>DUST</span><span>HEAT</span><span>STORM</span><span>GUST FRONT</span></div></div>}
+              </> : <div className="simulation-empty"><div className="simulation-orbit"><Layers3 size={32} /></div><b>Not run yet</b><span>Choose an event, intensity, duration and start time, then press Run. You will see the simulated response against the model baseline, plus a peak value for the event window.</span><div className="scenario-pills"><span>DUST</span><span>HEAT</span><span>STORM</span><span>GUST FRONT</span></div></div>}
             </div>
           </div>
         </section>

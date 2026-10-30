@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Flame } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ago, NODE_STALE_MS, useAeios } from '../lib/freshness';
 
 type Alert = {
   id: number; utc: string; site: string; level: 'WATCH' | 'WARNING'; hours_ahead: number | null; fires: number | null; frp_mw: number | null;
@@ -22,7 +23,7 @@ const MOCK: Alert[] = import.meta.env.DEV ? [
 ] : [];
 const mock = import.meta.env.DEV && new URLSearchParams(window.location.search).has('mockalerts');
 
-function useAlerts() {
+export function useAlerts() {
   const [alerts, setAlerts] = useState<Alert[] | null>(mock ? MOCK : null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -59,7 +60,11 @@ export function SmokeBanner() {
 /** History of alerts the Pi has raised. */
 export function SmokeAlertHistory() {
   const { alerts, error } = useAlerts();
+  const { data: aeios } = useAeios();
   const rows = (alerts || []).filter((a) => !isTest(a));
+  const nodeTimes = (aeios?.latest || []).map((l) => Date.parse(l.rx_utc)).filter(Number.isFinite);
+  const newest = nodeTimes.length ? Math.max(...nodeTimes) : null;
+  const inputsFresh = newest !== null && Date.now() - newest < NODE_STALE_MS;
   return (
     <div className="panel" style={{ marginTop: 12 }}>
       <div className="panel-header">
@@ -69,13 +74,29 @@ export function SmokeAlertHistory() {
       </div>
       {error && <div className="aq-warning">Could not load alerts: {error}</div>}
       {!error && alerts && rows.length === 0 && (
-        <div className="panel-subtitle" style={{ marginTop: 10 }}>No alerts yet. A WATCH needs air that passed 5 or more fires (or 10 MW); a WARNING needs 20 fires (or 50 MW), or a WATCH with node PM2.5 above 90 µg/m³.</div>
+        <div className="state-box state-none" role="status">
+          <b>No alerts raised</b>
+          <span>The gateway has not flagged a WATCH or WARNING.</span>
+        </div>
       )}
+      {!error && alerts && rows.length === 0 && !inputsFresh && (
+        <div className="state-box state-stale" role="status">
+          <b>Insufficient current data to assess</b>
+          <span>{newest === null ? 'No node packet has reached the cloud.' : `Newest node packet arrived ${ago(new Date(newest).toISOString())}.`} Node PM2.5 cannot confirm or rule out a smoke episode, so "no alerts" only reflects satellite fire and air-mass inputs.</span>
+        </div>
+      )}
+      <details className="how-it-works">
+        <summary>How alerts are triggered</summary>
+        <ul>
+          <li><b>WATCH</b>: air passed 5 or more fires, or 10 MW of fire radiative power.</li>
+          <li><b>WARNING</b>: air passed 20 fires or 50 MW, or a WATCH while node PM2.5 is above 90 µg/m³.</li>
+        </ul>
+      </details>
       {rows.length > 0 && (
         <div className="smoke-history">
           {rows.map((a) => (
             <div key={a.id} className={`smoke-row smoke-${a.level.toLowerCase()}`}>
-              <span className="smoke-pill">{a.level}</span>
+              <span className="smoke-pill"><AlertTriangle size={11} /> {a.level}</span>
               <div>
                 <b>{SITE_NAME[a.site] || a.site} · {when(a.utc)} IST</b>
                 <small>{a.fires} fires · {a.frp_mw} MW at {a.height} · from {a.origin_km} km {a.origin_dir}{a.hours_ahead ? ` · expected in ${a.hours_ahead} h` : ''}

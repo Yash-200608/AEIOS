@@ -111,6 +111,7 @@ export default function SatellitePanel({ site }: { site: SiteId }) {
             <input id="imerg-slot" type="range" min={0} max={47} value={slot} onChange={(e) => setSlot(Number(e.target.value))} /></div>
         )}
 
+        <div className="state-box state-info" role="status"><span><b>Observation:</b> imagery {date} UTC · {base === 'truecolor' ? 'VIIRS NOAA-20 true colour' : 'OpenStreetMap street map'}{overlay ? ` · ${overlay.label} layer${overlayTime ? ` (${overlayTime.slice(0, 16).replace('T', ' ')})` : ''}` : ''}{fires ? ' · VIIRS fire detections on' : ''}. An empty area can mean no detection, no satellite pass or cloud cover; this map cannot tell them apart.</span></div>
         <MapContainer center={center} zoom={7} minZoom={4} maxZoom={12} scrollWheelZoom={false} className="satellite-map">
           {base === 'truecolor' ? (
             <TileLayer key={`tc-${date}`} maxNativeZoom={9} maxZoom={12}
@@ -142,6 +143,7 @@ export default function SatellitePanel({ site }: { site: SiteId }) {
         <div className="sat-footer">
           {overlay && (
             <div className="sat-legend">
+              {fires && <div className="legend-line"><i className="fire-dot" /> Red squares: VIIRS thermal anomalies (fire detections), shown only for passes on the chosen date</div>}
               {overlay.legend && <img src={`${LEGENDS}/${overlay.legend}`} alt={`${overlay.label} colour scale`} />}
               <div className="range-field"><div><label htmlFor="sat-opacity">OVERLAY OPACITY</label><b>{Math.round(opacity * 100)}%</b></div>
                 <input id="sat-opacity" type="range" min={20} max={100} value={Math.round(opacity * 100)} onChange={(e) => setOpacity(Number(e.target.value) / 100)} /></div>
