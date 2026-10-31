@@ -30,6 +30,8 @@ jobs:
 
       - name: Simulation laboratory host tests
         run: python3 -m unittest discover -s simulation/tests -v
+      - name: AI data foundation tests
+        run: python3 -m unittest discover -s ai/tests -t . -v
 
   static-analysis:
     runs-on: ubuntu-latest
