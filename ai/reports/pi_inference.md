@@ -1,8 +1,9 @@
 # Pi 5 inference check (Phase 3)
 
 Measured 2026-10-31 on `node-gateway` (Raspberry Pi 5, 4 GB, Python 3.13.5, venv `~/aeios_ai/.venv` with numpy 2.5.4 and
-lightgbm 4.7.0 from `ai/requirements-runtime.txt`). Model `pm25_lgbm_cqr/v20261031`. The receiver and uploader services were
-inactive during the test and were not touched. Nothing here involves AEIOS node data.
+lightgbm 4.7.0 from `ai/requirements-runtime.txt`). Model `pm25_lgbm_cqr/v20261031`. The receiver and uploader run as systemd *user* services and were
+running during the test; they were not touched. (An earlier draft of this note said they were inactive: that check used system scope,
+not user scope, and was wrong. The memory and latency figures below were measured with them running.) Nothing here involves AEIOS node data.
 
 | check | result |
 |---|---|
