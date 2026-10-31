@@ -1,5 +1,5 @@
 {
   "_comment": "Maps the CSV node names sent by the field nodes to repository wire ids. Copy to ~/.config/aeios/v0_nodes.json and edit. wire_id must be 1-65534 and not 2 (the AMP gateway id). Nodes not listed here are quarantined.",
-  "N1": {"wire_id": 101, "display_id": "NODE-01", "site": "", "sampling_interval_s": 300},
-  "N2": {"wire_id": 102, "display_id": "NODE-02", "site": "", "sampling_interval_s": 300}
+  "N1": {"wire_id": 101, "display_id": "NODE-01", "site": "SGT University", "latitude": 28.4782417, "longitude": 76.9040528, "sampling_interval_s": 300},
+  "N2": {"wire_id": 102, "display_id": "NODE-02", "site": "Chandu village", "latitude": 28.4750, "longitude": 76.9167, "sampling_interval_s": 300}
 }
