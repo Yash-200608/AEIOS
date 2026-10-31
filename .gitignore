@@ -84,3 +84,6 @@ frontend/web/*.tsbuildinfo
 backend/supabase/.temp/
 ai/data/cache/
 ai/.venv/
+
+# Trained model binaries (14 MB per version). Only metadata.json is tracked; rebuild with ai.training.benchmark --register
+ai/models/registry/*/*/h*/

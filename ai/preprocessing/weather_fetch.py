@@ -64,7 +64,9 @@ def _store(conn: sqlite3.Connection, site: str, rows: list[tuple[int, str, Optio
         conn.executemany("INSERT OR REPLACE INTO wx_hourly VALUES (?,?,?,?)", [(site, ts, v, val) for ts, v, val in rows])
 
 
-def _start_for(conn: sqlite3.Connection, site: str, source: str, since: date) -> date:
+def _start_for(conn: sqlite3.Connection, site: str, source: str, since: date, force: bool = False) -> date:
+    if force:
+        return since
     row = conn.execute("SELECT fetched_through FROM wx_fetch_state WHERE site=? AND source=?", (site, source)).fetchone()
     if not row:
         return since
@@ -79,7 +81,7 @@ def _mark(conn: sqlite3.Connection, site: str, source: str, through: date) -> No
 
 def fetch_site(conn: sqlite3.Connection, site: str, lat: float, lon: float, *, since: str = DEFAULT_SINCE,
                today: Optional[date] = None, archive: Optional[JsonClient] = None, forecast: Optional[JsonClient] = None,
-               aq: Optional[JsonClient] = None) -> dict:
+               aq: Optional[JsonClient] = None, force: bool = False) -> dict:
     today = today or datetime.now(timezone.utc).date()
     since_d = date.fromisoformat(since)
     archive = archive or make_client(ARCHIVE_URL)
@@ -90,7 +92,7 @@ def fetch_site(conn: sqlite3.Connection, site: str, lat: float, lon: float, *, s
 
     # 1. ERA5 archive up to the lag boundary
     arch_end = today - timedelta(days=ARCHIVE_LAG_DAYS)
-    start = _start_for(conn, site, "archive", since_d)
+    start = _start_for(conn, site, "archive", since_d, force)
     for a, b in _year_windows(start, arch_end):
         p = archive.get("/archive", {**common, "start_date": a.isoformat(), "end_date": b.isoformat(),
                                      "hourly": ",".join(WEATHER_VARS), "wind_speed_unit": "ms"})
@@ -109,7 +111,7 @@ def fetch_site(conn: sqlite3.Connection, site: str, lat: float, lon: float, *, s
     stats["recent_rows"] = len(rows)
 
     # 3. CAMS PM / aerosol
-    start = _start_for(conn, site, "cams", max(since_d, date.fromisoformat(DEFAULT_SINCE)))
+    start = _start_for(conn, site, "cams", max(since_d, date.fromisoformat(DEFAULT_SINCE)), force)
     for a, b in _year_windows(start, today):
         p = aq.get("/air-quality", {**common, "start_date": a.isoformat(), "end_date": b.isoformat(),
                                     "hourly": ",".join(CAMS_VARS)})
@@ -126,8 +128,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--lat", type=float, default=SGT_LAT)
     ap.add_argument("--lon", type=float, default=SGT_LON)
     ap.add_argument("--since", default=DEFAULT_SINCE)
+    ap.add_argument("--force", action="store_true", help="re-read from --since even if newer data is cached")
     a = ap.parse_args(argv)
-    print(fetch_site(open_cache(), a.site, a.lat, a.lon, since=a.since))
+    print(fetch_site(open_cache(), a.site, a.lat, a.lon, since=a.since, force=a.force))
     return 0
 
 

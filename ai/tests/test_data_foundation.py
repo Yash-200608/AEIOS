@@ -101,7 +101,7 @@ class TestOpenAQ(unittest.TestCase):
         p = hours_payload(T0, 3)
         p["results"][1]["value"] = None
         rows = Q.parse_hours(p)
-        self.assertEqual([r[0] for r in rows], [T0, T0 + 2 * H])
+        self.assertEqual([r[0] for r in rows], [T0 + H, T0 + 3 * H])
         self.assertEqual(rows[0][2], 100.0)
 
     def test_history_is_resumable_and_idempotent(self) -> None:
@@ -121,7 +121,19 @@ class TestOpenAQ(unittest.TestCase):
         c2 = fake_client(handler)
         Q.fetch_history(c2, conn, since="2024-01-01", until=end)
         self.assertEqual(conn.execute("SELECT count(*) FROM aq_hourly").fetchone()[0], n1)
-        self.assertIn("2024-01-08", c2.calls[0].replace("%3A", ":"))
+        self.assertIn("2024-01-0", c2.calls[0].replace("%3A", ":"))
+
+    def test_backfill_reads_only_older_months(self) -> None:
+        conn = open_cache(":memory:")
+        with conn:
+            conn.execute("INSERT INTO aq_sensors VALUES (101, 10, 'pm25', 'ug')")
+            conn.execute("INSERT INTO aq_hourly VALUES (101, ?, 5.0, 100.0)", (int(datetime(2024, 3, 10, tzinfo=timezone.utc).timestamp()),))
+        c = fake_client(lambda u: {"results": []})
+        Q.fetch_history(c, conn, since="2024-01-01", until=datetime(2024, 6, 1, tzinfo=timezone.utc), backfill=True)
+        joined = " ".join(c.calls).replace("%3A", ":")
+        self.assertIn("2024-01-01", joined)
+        self.assertNotIn("2024-04", joined)  # nothing newer than the cached start (+ overlap) is re-read
+        self.assertEqual(conn.execute("SELECT count(*) FROM aq_fetch_state").fetchone()[0], 0)
 
     def test_history_paginates_until_a_short_page(self) -> None:
         conn = open_cache(":memory:")
@@ -132,22 +144,31 @@ class TestOpenAQ(unittest.TestCase):
         Q.fetch_history(c, conn, since="2024-01-01", until=datetime(2024, 1, 20, tzinfo=timezone.utc))
         self.assertEqual(conn.execute("SELECT count(*) FROM aq_hourly").fetchone()[0], Q.PAGE + 5)
 
-    def test_date_parameter_fallback_on_422(self) -> None:
+    def test_only_the_working_date_parameters_are_sent(self) -> None:
         conn = open_cache(":memory:")
         with conn:
             conn.execute("INSERT INTO aq_sensors VALUES (101, 10, 'pm25', 'ug')")
-        seen: list[str] = []
-
-        def opener(req, timeout):
-            seen.append(req.full_url)
-            if "datetime_from" in req.full_url:
-                raise urllib.error.HTTPError(req.full_url, 422, "bad", {}, None)  # type: ignore[arg-type]
-            return FakeResp(hours_payload(T0, 2))
-
-        c = JsonClient("https://x.test", opener=opener, sleep=lambda s: None)
+        c = fake_client(lambda u: hours_payload(T0, 2))
         Q.fetch_history(c, conn, since="2024-01-01", until=datetime(2024, 1, 5, tzinfo=timezone.utc))
-        self.assertTrue(any("date_from" in u for u in seen))
-        self.assertEqual(conn.execute("SELECT count(*) FROM aq_hourly").fetchone()[0], 2)
+        self.assertTrue(all("datetime_from" in u and "date_from" not in u for u in c.calls))
+
+    def test_history_can_be_limited_to_a_parameter_or_sensor(self) -> None:
+        conn = open_cache(":memory:")
+        Q.discover(fake_client(lambda u: LOCATIONS), conn)
+        c = fake_client(lambda u: hours_payload(T0, 2))
+        r = Q.fetch_history(c, conn, since="2024-01-01", until=datetime(2024, 1, 5, tzinfo=timezone.utc), parameters=("pm25",))
+        self.assertEqual(r["sensors"], 1)
+        r = Q.fetch_history(c, conn, since="2024-01-01", until=datetime(2024, 1, 5, tzinfo=timezone.utc), sensor_ids=[102])
+        self.assertEqual(r["sensors"], 1)
+
+    def test_half_hour_periods_are_stamped_at_their_end_rounded_up(self) -> None:
+        def row(frm: str, to: str, v: float) -> dict:
+            return {"value": v, "period": {"datetimeFrom": {"utc": frm}, "datetimeTo": {"utc": to}}}
+
+        rows = Q.parse_hours({"results": [row("2026-10-01T06:30:00Z", "2026-10-01T07:30:00Z", 1.0),
+                                          row("2026-10-01T07:00:00Z", "2026-10-01T08:00:00Z", 2.0)]})
+        d = lambda ts: datetime.fromtimestamp(ts, timezone.utc).strftime("%H:%M")  # noqa: E731
+        self.assertEqual([d(r[0]) for r in rows], ["08:00", "08:00"])  # never earlier than the data was complete
 
     def test_missing_key_is_a_clear_error_and_never_printed(self) -> None:
         import os
@@ -308,6 +329,20 @@ class TestFeatures(unittest.TestCase):
         self.assertEqual(F.ventilation(500.0, 2.0, None), 1000.0)
 
 
+class TestStationMerge(unittest.TestCase):
+    def test_newer_sensor_wins_on_overlap_and_fills_gaps(self) -> None:
+        conn = open_cache(":memory:")
+        with conn:
+            conn.execute("INSERT INTO aq_sensors VALUES (5,10,'pm25','ug')")      # legacy feed
+            conn.execute("INSERT INTO aq_sensors VALUES (900,10,'pm25','ug')")    # live feed
+            conn.execute("INSERT INTO aq_sensors VALUES (6,10,'pm10','ug')")
+            conn.executemany("INSERT INTO aq_hourly VALUES (5,?,?,100.0)", [(T0, 10.0), (T0 + H, 11.0)])
+            conn.executemany("INSERT INTO aq_hourly VALUES (900,?,?,100.0)", [(T0 + H, 99.0), (T0 + 2 * H, 12.0)])
+            conn.execute("INSERT INTO aq_hourly VALUES (6,?,500.0,100.0)", (T0,))
+        s = F.load_station_pm(conn, 10, "pm25")
+        self.assertEqual(s.data, {T0: 10.0, T0 + H: 99.0, T0 + 2 * H: 12.0})
+
+
 class TestSplits(unittest.TestCase):
     def test_chronological_split_is_ordered_and_purged(self) -> None:
         pm = synth_pm(24 * 100)
@@ -344,6 +379,15 @@ class TestReport(unittest.TestCase):
         g = R.gap_stats(hrs)
         self.assertEqual((g["n"], g["span_h"], g["longest_gap_h"]), (3, 6, 3))
         self.assertAlmostEqual(g["gap_pct"], 50.0)
+
+    def test_long_outage_is_reported_separately_from_ordinary_gaps(self) -> None:
+        a = [T0 + i * H for i in range(1000)]
+        b = [T0 + (1000 + 24 * 800 + i) * H for i in range(1000)]  # 800-day outage in the middle
+        g = R.gap_stats(a + b)
+        self.assertEqual(g["segments"], 2)
+        self.assertEqual(len(g["holes"]), 1)
+        self.assertGreater(g["gap_pct"], 90.0)
+        self.assertEqual(g["seg_gap_pct"], 0.0)
 
     def test_report_with_enough_data_runs_the_leakage_audit(self) -> None:
         conn = open_cache(":memory:")

@@ -64,6 +64,16 @@ def load_pm_series(conn: sqlite3.Connection, sensor_id: int, parameter: str = "p
     return s
 
 
+def load_station_pm(conn: sqlite3.Connection, location_id: int, parameter: str = "pm25") -> Series:
+    """One hourly series per station and parameter. OpenAQ lists a legacy feed and a newer live feed as separate sensors of
+    the same station; they are merged in sensor-id order so the newer feed wins wherever both report the same hour."""
+    merged = Series()
+    for (sid,) in conn.execute("SELECT sensor_id FROM aq_sensors WHERE location_id=? AND parameter=? ORDER BY sensor_id",
+                               (location_id, parameter)).fetchall():
+        merged.data.update(load_pm_series(conn, sid, parameter).data)
+    return merged
+
+
 def load_weather(conn: sqlite3.Connection, site: str) -> dict[str, Series]:
     out: dict[str, Series] = {}
     for ts, var, val in conn.execute("SELECT ts, var, value FROM wx_hourly WHERE site=?", (site,)):
@@ -169,8 +179,12 @@ def feature_names(rows: Iterable[dict]) -> list[str]:
     return []
 
 
+AUDIT_LOOKBACK_H = 48  # features read at most 24 h back; keeping 48 h leaves every legitimate read intact
+
+
 def _truncate(series: Series, t: int) -> Series:
-    return Series({ts: v for ts, v in series.data.items() if ts <= t})
+    """The series as it was known at t: nothing after t, and only the recent window the features can legitimately use."""
+    return Series({ts: series.data[ts] for ts in range(t - AUDIT_LOOKBACK_H * HOUR, t + 1, HOUR) if ts in series.data})
 
 
 def _same(a: Optional[float], b: Optional[float]) -> bool:
