@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import {
   Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays,
   Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Compass,
-  Droplets, Flame, Gauge, Globe2, Layers3, MapPin, Play, RadioTower, RefreshCw, Satellite,
-  ShieldCheck, Sun, Thermometer, Wind, Zap,
+  Droplets, Flame, Gauge, Globe2, Layers3, MapPin, Menu, Play, RadioTower, RefreshCw, Satellite,
+  ShieldCheck, Sun, Thermometer, Wind, X, Zap,
 } from 'lucide-react';
 import {
   Area, AreaChart, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer,
@@ -12,7 +12,7 @@ import {
 import WeatherScene, { type SceneWeather } from './components/WeatherScene';
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
-import SiteStatus from './components/SiteStatus';
+import Overview from './components/overview/Overview';
 import { ventilation, VENTILATION_POOR } from './lib/derived';
 import DispersionPanel from './components/DispersionPanel';
 import SatellitePanel from './components/SatellitePanel';
@@ -28,6 +28,11 @@ const SITES: Record<SiteId, { title: string; subtitle: string; lat: number; lon:
   chandu: { title: 'Chandu village', subtitle: 'Gurugram · Haryana', lat: 28.475, lon: 76.9167, code: 'AEIOS-CHD-01' },
 };
 
+const NAV_LABEL: Record<string, string> = {
+  overview: 'Overview', dispersion: 'Pollution dispersion', atmosphere: '3D atmosphere', forecast: 'Forecast', 'air-quality': 'Air quality',
+  satellite: 'Satellite', smoke: 'Smoke origin', simulation: 'Simulation lab', aeios: 'AEIOS model', station: 'Station network',
+};
+const COMPACT_QUERY = '(max-width: 980px)';
 const DAY_OPTIONS = [3, 4, 5, 7, 10, 15];
 const SCENARIOS = [
   { value: 'dust_event', label: 'Dust / particulate episode', note: 'Elevated dust response and dry-air conditions' },
@@ -72,16 +77,6 @@ function WeatherGlyph({ code, size = 18 }: { code: unknown; size?: number }) {
   return <Cloud size={size} />;
 }
 
-function MetricCard({ icon: Icon, label, value, unit, hint, accent = '' }: any) {
-  return (
-    <div className="metric-card">
-      <div className="metric-top"><span className={`metric-icon ${accent}`}><Icon size={16} /></span><span>{label}</span></div>
-      <div className="metric-value">{value}<small>{unit}</small></div>
-      <div className="metric-hint">{hint}</div>
-    </div>
-  );
-}
-
 function SectionTitle({ kicker, title, right }: { kicker: string; title: string; right?: ReactNode }) {
   return <div className="section-title"><div><div className="eyebrow">{kicker}</div><h2>{title}</h2></div>{right}</div>;
 }
@@ -107,6 +102,12 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const [simError, setSimError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   const [nav, setNav] = useState('overview');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const drawerWasOpen = useRef(false);
   const [sceneKey, setSceneKey] = useState(0);
 
   const siteConfig = SITES[site];
@@ -151,6 +152,29 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   }, [site, days]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Below 980 px the sidebar is an off-canvas drawer (it had no navigation at all on phones before).
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_QUERY);
+    const on = () => { setCompact(mq.matches); if (!mq.matches) setDrawerOpen(false); };
+    on(); mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  useEffect(() => {
+    // Focus enters the drawer on open and returns to the menu button on close; never on first render.
+    if (drawerOpen) { drawerWasOpen.current = true; closeBtnRef.current?.focus(); }
+    else if (drawerWasOpen.current) { drawerWasOpen.current = false; menuBtnRef.current?.focus({ preventScroll: true }); }
+  }, [drawerOpen]);
+  const trapDrawer = (e: KeyboardEvent) => {
+    if (!compact || !drawerOpen) return;
+    if (e.key === 'Escape') { setDrawerOpen(false); return; }
+    if (e.key !== 'Tab' || !sidebarRef.current) return;
+    const focusable = Array.from(sidebarRef.current.querySelectorAll<HTMLElement>('button, a[href]')).filter((el) => el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
 
   const dailyRows = useMemo(() => buildDailyRows(weather?.daily as any, days), [weather, days]);
   const current = (weather?.current || {}) as Record<string, any>;
@@ -264,6 +288,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
   const navigate = (section: string) => {
     setNav(section);
+    setDrawerOpen(false);
     document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -274,7 +299,13 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      {drawerOpen && <div className="drawer-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
+      <aside
+        id="primary-nav" ref={sidebarRef} className={`sidebar ${drawerOpen ? 'is-open' : ''}`} aria-label="Primary navigation" onKeyDown={trapDrawer}
+        {...(compact && !drawerOpen ? { 'aria-hidden': true, inert: '' as unknown as undefined } : {})}
+      >
+        <button ref={closeBtnRef} className="drawer-close" aria-label="Close navigation" onClick={() => setDrawerOpen(false)}><X size={20} aria-hidden="true" /></button>
         <div className="brand-lockup">
           <div className="brand-mark"><span /><span /><span /></div>
           <div><div className="brand-name">AEIOS<span> / SENTINEL</span></div><div className="brand-caption">ENVIRONMENTAL INTELLIGENCE</div></div>
@@ -316,67 +347,27 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
         </div>
       </aside>
 
-      <main className="main-content">
+      <main id="main-content" tabIndex={-1} className="main-content" aria-hidden={compact && drawerOpen ? true : undefined}>
         <header className="topbar">
-          <div className="breadcrumb"><span>AEIOS</span><i>/</i><b>Weather intelligence</b></div>
+          <div className="topbar-left">
+            <button ref={menuBtnRef} className="menu-button" aria-label="Open navigation" aria-expanded={drawerOpen} aria-controls="primary-nav" onClick={() => setDrawerOpen(true)}><Menu size={20} aria-hidden="true" /></button>
+            <div className="breadcrumb"><span>AEIOS</span><i>/</i><b aria-current="page">{NAV_LABEL[nav] ?? 'Overview'}</b></div>
+          </div>
           <div className="topbar-actions">
             <span className="timezone-chip">IST · UTC+05:30</span>
-            <button className="icon-button" onClick={() => void load(false)} title="Refresh weather data"><RefreshCw size={16} className={loadState === 'loading' ? 'spin' : ''} /></button>
-            <button className="avatar-chip" onClick={onSignOut} title={userEmail ? `${userEmail} — click to sign out` : 'Sign out'}>{(userEmail[0] || 'A').toUpperCase()}</button>
+            <button className="icon-button" onClick={() => void load(false)} title="Refresh weather data" aria-label="Refresh weather data"><RefreshCw size={16} className={loadState === 'loading' ? 'spin' : ''} /></button>
+            <button className="avatar-chip" onClick={onSignOut} title={userEmail ? `${userEmail} — click to sign out` : 'Sign out'} aria-label={userEmail ? `Sign out ${userEmail}` : 'Sign out'}>{(userEmail[0] || 'A').toUpperCase()}</button>
           </div>
         </header>
 
         <SmokeBanner />
 
-        <section id="overview" className="page-section overview-section">
-          <div className="page-heading-row">
-            <div>
-              <div className="eyebrow">LOCAL WEATHER INTELLIGENCE · HARYANA, INDIA</div>
-              <h1>{siteConfig.title}<span className="heading-dot">.</span></h1>
-              <div className="location-sub"><MapPin size={14} /> {siteConfig.subtitle} <span className="coord-text">{siteConfig.lat.toFixed(4)}° N, {siteConfig.lon.toFixed(4)}° E</span></div>
-            </div>
-            <div className="heading-status">
-              <div className={`status-chip ${loadState === 'ready' ? 'status-live' : loadState === 'error' ? 'status-error' : ''}`}>
-                <span className="status-led" /> {loadState === 'ready' ? (forecastMeta?.stale ? 'CACHED MODEL FEED' : 'MODEL FEED CONNECTED') : loadState === 'error' ? 'FEED UNAVAILABLE' : 'CONNECTING MODEL FEED'}
-              </div>
-              <div className="last-refresh">Updated {weatherUpdatedLabel} IST</div>
-            </div>
-          </div>
-
-          {loadState === 'error' && <div className="error-banner"><AlertTriangle size={16} /> Weather feed unavailable. The forecast comes straight from Open-Meteo, so check this device's internet connection. <button onClick={() => void load()}>Retry</button></div>}
-          {forecastMeta?.warning && <div className="notice-banner"><AlertTriangle size={15} /> {forecastMeta.warning}</div>}
-
-          <SiteStatus site={site} siteTitle={siteConfig.title} hourly={hourly} index={selectedHour} />
-
-          <div className="current-weather-banner weather-secondary">
-            <div className="current-main">
-              <div className="current-kicker">WEATHER · REGIONAL MODEL ESTIMATE</div>
-              <div className="current-temp">{round(current.temperature_2m)}<span>°</span></div>
-              <div className="current-condition"><WeatherGlyph code={current.weather_code} size={21} /> {currentDescription}</div>
-              <div className="current-feels">Feels like {round(current.apparent_temperature)}°C · {selectedTime ? formatDay(selectedTime.slice(0, 10), { weekday: 'long', day: 'numeric', month: 'long' }) : 'Local forecast'}</div>
-            </div>
-            <div className="current-divider" />
-            <div className="current-stat-grid">
-              <div><span><Droplets size={14} /> Humidity</span><b>{round(current.relative_humidity_2m)}<small>%</small></b></div>
-              <div><span><Wind size={14} /> Wind</span><b>{round(current.wind_speed_10m, 1)}<small>m/s</small></b><em>{compass(current.wind_direction_10m)}</em></div>
-              <div><span><Gauge size={14} /> Pressure</span><b>{round(current.pressure_msl)}<small>hPa</small></b></div>
-              <div><span><CloudRain size={14} /> Rain now</span><b>{round(current.precipitation, 1)}<small>mm</small></b></div>
-            </div>
-            <div className="current-right">
-              <div className="sun-orbit"><div className="sun-core"><Sun size={28} /></div><div className="orbit-dot" /></div>
-              <div className="sun-times"><span>UV INDEX</span><b>{round(current.uv_index, 1)}</b></div>
-              <div className="sun-times"><span>CLOUD COVER</span><b>{round(current.cloud_cover)}%</b></div>
-            </div>
-          </div>
-
-          <div className="metric-grid">
-            <MetricCard icon={Thermometer} label="Air temperature" value={round(current.temperature_2m)} unit="°C" hint={`Feels like ${round(current.apparent_temperature)}°C`} accent="mint" />
-            <MetricCard icon={Droplets} label="Relative humidity" value={round(current.relative_humidity_2m)} unit="%" hint={`Dew point ${round(hourlyAt(hourly, 'dew_point_2m', selectedHour))}°C`} accent="blue" />
-            <MetricCard icon={Wind} label="Wind speed · 10 m" value={round(current.wind_speed_10m, 1)} unit="m/s" hint={`Gusts ${round(current.wind_gusts_10m, 1)} m/s · ${compass(current.wind_direction_10m)}`} accent="amber" />
-            <MetricCard icon={Gauge} label="Sea-level pressure" value={round(current.pressure_msl)} unit="hPa" hint={`Surface ${round(current.surface_pressure)} hPa`} accent="violet" />
-            <MetricCard icon={Sun} label="Solar / UV" value={round(current.uv_index, 1)} unit=" UV" hint={`Radiation ${round(hourlyAt(hourly, 'shortwave_radiation', selectedHour))} W/m²`} accent="orange" />
-          </div>
-        </section>
+        <Overview
+          site={site} title={siteConfig.title} subtitle={siteConfig.subtitle} lat={siteConfig.lat} lon={siteConfig.lon}
+          loadState={loadState} forecastMeta={forecastMeta} lastUpdated={lastUpdated}
+          current={current} hourly={hourly} selectedHour={selectedHour} selectedTime={selectedTime}
+          aq={aq} aqWarning={aqWarning} onRetry={() => void load()} onNavigate={navigate}
+        />
 
         <DispersionPanel hourly={hourly} index={selectedHour} />
 

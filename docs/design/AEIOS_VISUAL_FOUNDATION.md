@@ -163,6 +163,8 @@ Implemented as the smallest useful set in `src/design/primitives.tsx` (+ `primit
 | `EmptyState` | Six kinds: not run, no result, unavailable, stale, loading, error, each with a different icon and border style |
 | Controls | `.ax-btn` (primary, secondary, quiet), `.ax-segmented`, `.ax-select`, one 3px focus ring |
 
+Phase 2 additions to `StateLabel`: `offline`, `active`, `checking`, `unavailable` (see `PHASE_2_COMMAND_CENTER_SPEC.md`, section 10).
+
 Not yet built (later phases): tooltip/popover, a production drawer, a page heading, collapsible nav groups.
 
 ## 8. Chart, map and atmosphere rules

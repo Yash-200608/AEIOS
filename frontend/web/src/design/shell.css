@@ -1,0 +1,45 @@
+/*
+ * App shell: skip link, menu button and the accessible navigation drawer (Phase 2).
+ * Loaded after styles.css so it can override the legacy icon-rail (980 px) and hidden-sidebar (680 px) rules.
+ * Desktop layout is unchanged. Tokens only; the few legacy-matching values restore the original sidebar look inside the drawer.
+ */
+.skip-link { position: absolute; left: -9999px; top: var(--aeios-space-2); z-index: 100; display: inline-flex; align-items: center; min-height: var(--aeios-target-touch); padding: 0 var(--aeios-space-4); background: var(--aeios-accent); color: var(--aeios-on-accent); font: 600 var(--aeios-text-base) var(--aeios-font-ui); border-radius: var(--aeios-radius-sm); }
+.skip-link:focus { left: var(--aeios-space-4); }
+.main-content:focus { outline: none; }
+.topbar-left { display: flex; align-items: center; gap: var(--aeios-space-3); min-width: 0; }
+.menu-button, .drawer-close { display: none; align-items: center; justify-content: center; min-width: var(--aeios-target-touch); min-height: var(--aeios-target-touch); background: transparent; border: 1.5px solid var(--aeios-border-strong); border-radius: var(--aeios-radius-md); color: var(--aeios-text-primary); cursor: pointer; transition: background-color var(--aeios-dur-micro) var(--aeios-ease); }
+.menu-button:hover, .drawer-close:hover { background: var(--aeios-surface-2); }
+.skip-link:focus-visible, .menu-button:focus-visible, .drawer-close:focus-visible, .sidebar :where(button, a):focus-visible, .topbar :where(button):focus-visible, .main-content :where(a, button, summary, select, input):focus-visible {
+  outline: 3px solid var(--aeios-focus-ring); outline-offset: 2px;
+}
+.icon-button, .avatar-chip { min-width: var(--aeios-target-touch); min-height: var(--aeios-target-touch); }
+.breadcrumb b { font-size: var(--aeios-text-sm); }
+.timezone-chip, .avatar-chip { font-size: var(--aeios-text-xs); }
+.breadcrumb { font-size: var(--aeios-text-sm); }
+.drawer-scrim { display: none; }
+
+@media (max-width: 980px) {
+  .menu-button { display: inline-flex; }
+  .drawer-scrim { display: block; position: fixed; inset: 0; background: var(--aeios-scrim); z-index: 55; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(86vw, 320px); flex: none; height: 100dvh; min-height: 0; z-index: 60; display: flex; padding: 16px 15px 16px; overflow-y: auto; transform: translateX(-100%); visibility: hidden; box-shadow: var(--aeios-shadow-overlay); transition: transform var(--aeios-dur-nav) var(--aeios-ease), visibility 0s linear var(--aeios-dur-nav); }
+  .sidebar.is-open { transform: none; visibility: visible; transition: transform var(--aeios-dur-nav) var(--aeios-ease), visibility 0s; }
+  .drawer-close { display: inline-flex; align-self: flex-end; margin-bottom: var(--aeios-space-2); }
+  /* undo the legacy icon-rail: show labels again */
+  .brand-lockup { justify-content: flex-start; padding: 0 7px 24px; }
+  .brand-lockup > div:last-child { font-size: 1rem; }
+  .side-group-label { font-size: var(--aeios-text-xs); }
+  .side-nav button { font-size: var(--aeios-text-base); justify-content: flex-start; padding: 0 12px; min-height: var(--aeios-target-touch); }
+  .side-nav button svg { width: 17px; height: 17px; }
+  .site-link { justify-content: flex-start; padding: 9px 10px; min-height: var(--aeios-target-touch); }
+  .site-link span:not(.site-dot) { display: block; }
+  .sidebar-divider { margin: 25px 6px 23px; }
+  .node-health-card { padding: 12px 11px 10px; display: block; }
+  .node-health-card > b, .node-health-card > small { display: block; }
+  .health-foot { display: flex; }
+  .node-health-head { font-size: var(--aeios-text-xs); margin-bottom: 10px; }
+  .side-footer { display: flex; }
+  .main-content { padding-left: 16px; padding-right: 16px; }
+  .topbar { margin-bottom: 20px; }
+}
+@media (min-width: 981px) { .drawer-close { display: none; } }
+@media (max-width: 680px) { .timezone-chip { display: none; } }

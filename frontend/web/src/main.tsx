@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import './design/tokens.css';
+import './design/shell.css';
 import App from './App';
 import AuthGate from './components/AuthGate';
 

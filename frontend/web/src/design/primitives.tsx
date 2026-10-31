@@ -27,9 +27,13 @@ export function SourceLabel({ kind, detail }: { kind: SourceKind; detail?: strin
 
 /* ---------- Operational state ---------- */
 // Connectivity, freshness, maturity and sensor state are separate dimensions; callers pass the one they mean.
-export type OperationalState = 'online' | 'fresh' | 'stale' | 'nodata' | 'warming' | 'calibrating' | 'degraded' | 'fault';
+export type OperationalState = 'online' | 'offline' | 'active' | 'checking' | 'unavailable' | 'fresh' | 'stale' | 'nodata' | 'warming' | 'calibrating' | 'degraded' | 'fault';
 const STATE: Record<OperationalState, { label: string; tone: 'good' | 'warning' | 'critical' | 'neutral'; Icon: typeof Clock }> = {
   online: { label: 'ONLINE', tone: 'good', Icon: CheckCircle2 },
+  offline: { label: 'OFFLINE', tone: 'critical', Icon: WifiOff },
+  active: { label: 'ACTIVE', tone: 'good', Icon: CheckCircle2 },
+  checking: { label: 'CHECKING', tone: 'neutral', Icon: Clock },
+  unavailable: { label: 'UNAVAILABLE', tone: 'critical', Icon: ServerCrash },
   fresh: { label: 'FRESH', tone: 'good', Icon: CheckCircle2 },
   stale: { label: 'STALE', tone: 'warning', Icon: Clock },
   nodata: { label: 'NO DATA', tone: 'critical', Icon: WifiOff },
