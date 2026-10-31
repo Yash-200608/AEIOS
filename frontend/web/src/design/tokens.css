@@ -1,0 +1,114 @@
+/*
+ * AEIOS Sentinel design tokens (Phase 01). Single source of truth for the new visual foundation.
+ * Spec: docs/design/AEIOS_VISUAL_FOUNDATION.md
+ *
+ * All tokens are namespaced --aeios-* so they cannot collide with the legacy variables in src/styles.css
+ * (--bg, --panel, --mint, ...). Importing this file changes nothing on existing pages; Phase 02 migrates pages to it.
+ * Do not write hex values anywhere else in the new design layer: reference these tokens.
+ */
+:root {
+  /* Surfaces: midnight graphite, not pure black */
+  --aeios-canvas: #080d13;
+  --aeios-surface-1: #101820;
+  --aeios-surface-2: #141f29;
+  --aeios-surface-3: #1b2935;
+
+  /* Text. Contrast against all four surfaces is recorded in the spec (all pass AA for normal text). */
+  --aeios-text-primary: #e8eef3;
+  --aeios-text-secondary: #b3c0cc;
+  --aeios-text-tertiary: #91a1af;
+
+  /* Interaction accent (focus, selection, primary action) */
+  --aeios-accent: #42d9d0;
+  --aeios-on-accent: #080d13;
+
+  /* Data-source grammar. Never reused for severity. Always paired with a text label and an icon. */
+  --aeios-source-live: #42d9d0;
+  --aeios-source-regional: #8daeff;
+  --aeios-source-model: #a6d98c;
+  --aeios-source-simulation: #c1a0ff;
+
+  /* Operational / severity status. Never reused for provenance. */
+  --aeios-status-good: #63d4a1;
+  --aeios-status-warning: #e8b65a;
+  --aeios-status-critical: #ff6b67;
+
+  /* Borders: subtle is decorative only (about 1.2-1.5:1). Strong is the control boundary (3.3:1 or better). */
+  --aeios-border-subtle: #263440;
+  --aeios-border-strong: #61798b;
+  --aeios-focus-ring: var(--aeios-accent);
+
+  /* Translucent tints derived from the colours above, for label backgrounds */
+  --aeios-tint-live: rgb(66 217 208 / 0.12);
+  --aeios-tint-regional: rgb(141 174 255 / 0.12);
+  --aeios-tint-model: rgb(166 217 140 / 0.12);
+  --aeios-tint-simulation: rgb(193 160 255 / 0.12);
+  --aeios-tint-good: rgb(99 212 161 / 0.12);
+  --aeios-tint-warning: rgb(232 182 90 / 0.14);
+  --aeios-tint-critical: rgb(255 107 103 / 0.14);
+  --aeios-scrim: rgb(4 7 10 / 0.72);
+
+  /* Typography. Local stacks only: no remote font service. Inter and IBM Plex Mono are used if installed. */
+  --aeios-font-ui: Inter, 'Segoe UI', system-ui, sans-serif;
+  --aeios-font-mono: 'IBM Plex Mono', 'Cascadia Code', Consolas, monospace;
+  --aeios-text-xs: 0.75rem;     /* 12px: smallest size allowed for any essential label */
+  --aeios-text-sm: 0.8125rem;   /* 13px */
+  --aeios-text-base: 0.875rem;  /* 14px */
+  --aeios-text-md: 1rem;        /* 16px */
+  --aeios-text-lg: 1.25rem;     /* 20px */
+  --aeios-text-xl: 1.75rem;     /* 28px */
+  --aeios-text-display: clamp(2rem, 1.4rem + 2.4vw, 3.25rem); /* page titles and headline conditions only */
+  --aeios-leading-tight: 1.15;
+  --aeios-leading-body: 1.55;
+
+  /* 4px spacing scale */
+  --aeios-space-1: 4px;
+  --aeios-space-2: 8px;
+  --aeios-space-3: 12px;
+  --aeios-space-4: 16px;
+  --aeios-space-5: 20px;
+  --aeios-space-6: 24px;
+  --aeios-space-8: 32px;
+  --aeios-space-10: 40px;
+  --aeios-space-12: 48px;
+  --aeios-space-16: 64px;
+
+  /* Radius vocabulary */
+  --aeios-radius-sm: 6px;
+  --aeios-radius-md: 10px;
+  --aeios-radius-lg: 14px;
+  --aeios-radius-xl: 18px;
+
+  /* Elevation: only for things that genuinely sit above the canvas (drawers, popovers). No glows. */
+  --aeios-shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4);
+  --aeios-shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.55);
+
+  /* Layout targets */
+  --aeios-sidebar-width: 248px;
+  --aeios-sidebar-collapsed: 72px;
+  --aeios-topbar-height: 60px;
+  --aeios-content-max: 1440px;
+  --aeios-target-min: 24px;     /* WCAG 2.2 AA 2.5.8 floor */
+  --aeios-target-touch: 44px;   /* preferred touch size */
+
+  /* Motion: state and interaction only */
+  --aeios-dur-micro: 150ms;
+  --aeios-dur-state: 200ms;
+  --aeios-dur-nav: 260ms;
+  --aeios-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Reduced motion: durations collapse so no essential state depends on animation. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --aeios-dur-micro: 0.01ms;
+    --aeios-dur-state: 0.01ms;
+    --aeios-dur-nav: 0.01ms;
+  }
+}
+/* The design lab can force the same behaviour to demonstrate it. */
+.aeios-force-reduced-motion {
+  --aeios-dur-micro: 0.01ms;
+  --aeios-dur-state: 0.01ms;
+  --aeios-dur-nav: 0.01ms;
+}
