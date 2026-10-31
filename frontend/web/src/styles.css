@@ -530,3 +530,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .scene-gesture { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+
+/* PM2.5 forecast panel */
+.fc-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.fc-select { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 10px var(--mono); letter-spacing: .06em; }
+.fc-select select { background: rgba(22, 14, 32, .8); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font: 12px var(--mono); max-width: 100%; }
+.fc-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.fc-pills button { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font: 10px var(--mono); cursor: pointer; }
+.fc-pills button.active { color: #00e5ff; border-color: #00e5ff; }
+.fc-drivers { display: grid; gap: 7px; margin-top: 10px; }
+.fc-driver { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 52px; align-items: center; gap: 10px; font-size: 12px; color: var(--text-soft); }
+.fc-driver small { color: var(--muted); margin-left: 6px; font: 10px var(--mono); }
+.fc-bar { height: 8px; border-radius: 4px; background: rgba(175, 161, 192, .1); overflow: hidden; }
+.fc-bar i { display: block; height: 100%; border-radius: 4px; }
+.fc-bar i.up { background: #00e5ff; } .fc-bar i.down { background: #a784d9; }
+.fc-driver-val { text-align: right; font: 11px var(--mono); }
+@media (max-width: 560px) { .fc-driver { grid-template-columns: 1fr 70px 46px; } }

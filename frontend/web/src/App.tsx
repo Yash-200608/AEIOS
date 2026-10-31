@@ -12,6 +12,7 @@ import {
 import WeatherScene, { type SceneWeather } from './components/WeatherScene';
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
+import ForecastPanel from './components/ForecastPanel';
 import SiteStatus from './components/SiteStatus';
 import { ventilation, VENTILATION_POOR } from './lib/derived';
 import DispersionPanel from './components/DispersionPanel';
@@ -535,6 +536,8 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
         </section>
 
         <AeiosPanel />
+
+        <ForecastPanel />
 
         <section id="station" className="page-section">
           <SectionTitle kicker="GROUND-TRUTH NETWORK" title="Station observations & site map" right={<span className={`status-chip ${station?.status === 'LIVE' ? 'status-live' : ''}`}><span className="status-led" /> {station?.status || 'CHECKING STATION'}</span>} />
