@@ -77,3 +77,21 @@ jobs:
             'firmware/host_mocks/**/*.h')
           if [ ${#FILES[@]} -eq 0 ]; then echo "No files"; exit 0; fi
           clang-format --dry-run --Werror "${FILES[@]}"
+
+  web-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/web/package-lock.json
+      - run: npm ci
+      - name: Type-check and build
+        run: npm run build
+      - name: Dispersion solver and isosurface tests
+        run: npm test

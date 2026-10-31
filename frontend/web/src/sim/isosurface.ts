@@ -1,6 +1,10 @@
 // Isosurface extraction for a scalar field on a regular (not necessarily cubic) grid, using the classic marching-cubes tables that
 // ship with three.js. three's own MarchingCubes object needs a cubic grid; the dispersion box is 64 x 64 x 16.
-import { edgeTable, triTable } from 'three/examples/jsm/objects/MarchingCubes.js';
+import { edgeTable as edgeTableTyped, triTable as triTableTyped } from 'three/examples/jsm/objects/MarchingCubes.js';
+
+// @types/three declares these as arrays of typed arrays; at runtime they are flat Int32Arrays (256 and 256 x 16 entries).
+const edgeTable = edgeTableTyped as unknown as Int32Array;
+const triTable = triTableTyped as unknown as Int32Array;
 
 export type Mesh = { positions: Float32Array; normals: Float32Array };
 
