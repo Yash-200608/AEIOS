@@ -47,7 +47,7 @@ class BaselineBank:
     def update(self, obs: Observation, *, freeze: bool) -> None:
         b = self._nodes.setdefault(obs.wire_id, _NodeBase())
         if freeze:
-            if obs.mq135_index is not None and obs.quality.mq135 >= 0.7 and not self._mq_ready.get(obs.wire_id):
+            if obs.mq135_index is not None and (obs.quality.mq135 or 0.0) >= 0.7 and not self._mq_ready.get(obs.wire_id):
                 b.mq135_index = obs.mq135_index
                 self._mq_ready[obs.wire_id] = True
             return
@@ -66,7 +66,7 @@ class BaselineBank:
         b.humidity = step(b.humidity, obs.humidity)
         b.pressure = step(b.pressure, obs.pressure)
         b.bme688_gas_feature = step(b.bme688_gas_feature, obs.bme688_gas_feature)
-        if obs.mq135_index is not None and obs.quality.mq135 >= 0.7:
+        if obs.mq135_index is not None and (obs.quality.mq135 or 0.0) >= 0.7:
             if not self._mq_ready.get(obs.wire_id):
                 b.mq135_index = obs.mq135_index
                 self._mq_ready[obs.wire_id] = True

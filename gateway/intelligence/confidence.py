@@ -42,18 +42,23 @@ class ConfidenceEngine:
         q = quality.combined()
         flags = [pm_high, co2_high, bme_high, mq_high]
         n_high = sum(1 for x in flags if x)
+        def usable(score) -> bool:
+            return score is not None and score > 0.3
+
         present = sum(
             1
             for val, ok in (
-                (features.pm25, quality.pms > 0.3),
-                (features.co2, quality.scd41 > 0.3),
-                (features.bme_gas, quality.bme688 > 0.3),
-                (features.mq_index, quality.mq135 > 0.3),
+                (features.pm25, usable(quality.pms)),
+                (features.co2, usable(quality.scd41)),
+                (features.bme_gas, usable(quality.bme688)),
+                (features.mq_index, usable(quality.mq135)),
             )
             if val is not None and ok
         )
-        missing = max(0.0, 1.0 - present / 4.0)
-        agreement = n_high / 4.0
+        # Sensors that are not fitted (quality None) are not "missing"; with all four fitted this is the original 4.
+        fitted = max(1, sum(1 for s in (quality.pms, quality.scd41, quality.bme688, quality.mq135) if s is not None))
+        missing = max(0.0, 1.0 - present / fitted)
+        agreement = n_high / fitted
         disagreement = 0.0
         if n_high == 1:
             disagreement = 0.85
@@ -71,7 +76,7 @@ class ConfidenceEngine:
             fault = 0.12
             reason = "two-modality agreement"
         elif n_high == 1 and persist:
-            if mq_high and quality.mq135 < 0.7:
+            if mq_high and (quality.mq135 or 0.0) < 0.7:
                 env = 0.12
                 fault = 0.72
                 reason = "single-sensor MQ135 spike"

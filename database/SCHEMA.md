@@ -16,7 +16,7 @@ Trusted measurements live in `sensor_readings`. Invalid or duplicate frames stay
 | `humidity` | Relative humidity | %RH |
 | `pressure` | Barometric pressure | hPa |
 | `bme688_gas_feature` | BME688 gas resistance feature | **not universal ppm** |
-| `mq135_raw` | MQ135 ADC / raw count | raw |
+| `mq135_raw` | MQ135 ADC / raw count (millivolts for v0 prototype nodes, ADR-018) | raw |
 | `mq135_index` | MQ135 derived index | unitless |
 | `quality_flags` | AMP status flags | bitfield |
 | `sensor_quality` | Combined per-sensor quality | 0–1 |

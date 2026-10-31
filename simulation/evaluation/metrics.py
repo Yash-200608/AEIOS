@@ -32,7 +32,11 @@ class EvalResult:
     precision: float = 0.0
     recall: float = 0.0
     f1: float = 0.0
+    # Deprecated alias: this has always been FP / (TP + FP), i.e. the false discovery rate, not a true
+    # false-positive rate (FP / negatives). Kept so existing callers keep working; use the two fields below.
     false_positive_rate: float = 0.0
+    false_discovery_rate: float = 0.0
+    false_alerts_per_day: float | None = None
     detection_latency_s: float | None = None
     matched: int = 0
     false_positives: int = 0
@@ -45,6 +49,7 @@ def evaluate(
     detected: list[dict],
     *,
     match_window_s: float = 40.0,
+    duration_s: float | None = None,
 ) -> EvalResult:
     """Compare GT environment/sensor events to detector output.
 
@@ -121,6 +126,8 @@ def evaluate(
         recall=rec,
         f1=f1,
         false_positive_rate=fpr,
+        false_discovery_rate=fpr,
+        false_alerts_per_day=(fp * 86400.0 / duration_s) if duration_s else None,
         detection_latency_s=(sum(matches) / len(matches)) if matches else None,
         matched=tp,
         false_positives=fp,

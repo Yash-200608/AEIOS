@@ -41,6 +41,13 @@ class MqHeaterState(str, Enum):
     FAULT = "FAULT"
 
 
+# Sensors a node may carry. A sensor that is not fitted (the v0 field prototype has no SCD41) is "not fitted", not faulted.
+SENSOR_PMS = "pms5003"
+SENSOR_SCD41 = "scd41"
+SENSOR_BME688 = "bme688"
+SENSOR_MQ135 = "mq135"
+ALL_SENSORS = frozenset({SENSOR_PMS, SENSOR_SCD41, SENSOR_BME688, SENSOR_MQ135})
+
 # AMP §7.1.1 status_flags
 FLAG_PM_FAULT = 1 << 0
 FLAG_BME_FAULT = 1 << 1
@@ -53,10 +60,11 @@ FLAG_SAMPLE_INVALID = 1 << 4
 class SensorQuality:
     """Per-sensor trust. Not the same as event confidence (CF04 §10)."""
 
-    pms: float = 1.0
-    scd41: float = 1.0
-    bme688: float = 1.0
-    mq135: float = 1.0
+    # None means the sensor is not fitted on this node (see Observation.installed_sensors).
+    pms: Optional[float] = 1.0
+    scd41: Optional[float] = 1.0
+    bme688: Optional[float] = 1.0
+    mq135: Optional[float] = 1.0
     flags: list[str] = field(default_factory=list)
 
     def combined(self) -> float:
@@ -100,6 +108,7 @@ class Observation:
     config_version: Optional[str] = None
     confidence: Optional[float] = None
     provenance: str = DATA_SIMULATED
+    installed_sensors: frozenset = ALL_SENSORS
 
 
 @dataclass

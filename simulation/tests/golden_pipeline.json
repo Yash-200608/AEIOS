@@ -1,0 +1,344 @@
+{
+ "duplicate_packet:42": {
+  "event_features": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "events": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 1362,
+   "sha": "c79a0bb5e5f0307c"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "c00371fc23fca386"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "gateway_restart:42": {
+  "event_features": {
+   "rows": 9,
+   "sha": "fdb3f1273dd76b3e"
+  },
+  "events": {
+   "rows": 3,
+   "sha": "4ec270b021748d57"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "75f991d74a8c8a70"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "46d0161de1579ae3"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 1,
+   "sha": "01ee661ffd9fbe4f"
+  }
+ },
+ "mq135_only_spike:42": {
+  "event_features": {
+   "rows": 12,
+   "sha": "d2ae51c09a90e886"
+  },
+  "events": {
+   "rows": 3,
+   "sha": "2b5050939d2bdaee"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "8b87ad6a092d493e"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "68c0c9907470cf93"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "multimodal_event:42": {
+  "event_features": {
+   "rows": 13,
+   "sha": "9a1f07c70f126148"
+  },
+  "events": {
+   "rows": 4,
+   "sha": "bac9af9e5287403c"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "b019dcd6adc01202"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "7cecde6495cc7bb9"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "multimodal_event:43": {
+  "event_features": {
+   "rows": 13,
+   "sha": "6ec3eaadf68937db"
+  },
+  "events": {
+   "rows": 4,
+   "sha": "89eeb459df925457"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "666be6117a2ef80e"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "8c7652af73a5a315"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "multiple_simultaneous_events:43": {
+  "event_features": {
+   "rows": 13,
+   "sha": "8e9e6450a84fe7ce"
+  },
+  "events": {
+   "rows": 4,
+   "sha": "f6881c96bf616738"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "ad1782be202f3cfc"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "a041f8564a064a58"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "normal:42": {
+  "event_features": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "events": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "2a3db4e60b87f454"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "c00371fc23fca386"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "regional_propagating_event:42": {
+  "event_features": {
+   "rows": 13,
+   "sha": "f0c4e89315841e5a"
+  },
+  "events": {
+   "rows": 4,
+   "sha": "427a7f5380e6e10e"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "9adbd1d34a672c73"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "bd8e2612b31d158a"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "3dad5fc70927c0fa"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "7ce943239502aa8a"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ },
+ "sensor_failure:42": {
+  "event_features": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "events": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  },
+  "nodes": {
+   "rows": 3,
+   "sha": "3087f65d6ea46a44"
+  },
+  "power_state": {
+   "rows": 339,
+   "sha": "0a7d0cc85f5b90a2"
+  },
+  "radio_packets": {
+   "rows": 681,
+   "sha": "ad1c14dc00040a5a"
+  },
+  "sampling_decisions": {
+   "rows": 3,
+   "sha": "5f44f3551580d13e"
+  },
+  "sensor_readings": {
+   "rows": 339,
+   "sha": "90ca4edb6bec7155"
+  },
+  "sensor_states": {
+   "rows": 1356,
+   "sha": "28f8fdde7ced9323"
+  },
+  "system_logs": {
+   "rows": 0,
+   "sha": "e3b0c44298fc1c14"
+  }
+ }
+}

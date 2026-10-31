@@ -55,7 +55,7 @@ class EventDetector:
         co2_high = high(features.co2, "co2", CO2_SCALE)
         # BME gas-response: lower resistance/feature => more reducing gas
         bme_high = high(features.bme_gas, "bme688_gas_feature", BME_SCALE, invert=True)
-        mq_q = obs.quality.mq135 >= 0.7 and obs.mq_warmup_s >= 12.0 and mq_primed
+        mq_q = (obs.quality.mq135 or 0.0) >= 0.7 and obs.mq_warmup_s >= 12.0 and mq_primed
         mq_high = high(features.mq_index, "mq135_index", MQ_SCALE) and mq_q
 
         n = sum([pm_high, co2_high, bme_high, mq_high])

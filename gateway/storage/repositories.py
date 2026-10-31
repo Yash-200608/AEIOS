@@ -179,57 +179,26 @@ class ObservationRepository:
 
     def insert_states(self, obs: Observation, timestamp: int) -> None:
         stale = bool(obs.quality_flags & FLAG_SAMPLE_INVALID)
-        rows = [
-            (
-                "pms5003",
-                map_sensor_lifecycle_state(
-                    quality=obs.quality.pms,
-                    fault=bool(obs.quality_flags & FLAG_PM_FAULT) or obs.quality.pms <= 0.0,
-                    warming=False,
-                    stale=stale,
-                ),
-                obs.quality.pms,
-                None,
-                None,
-            ),
-            (
-                "scd41",
-                map_sensor_lifecycle_state(
-                    quality=obs.quality.scd41,
-                    fault=bool(obs.quality_flags & FLAG_SCD_FAULT) or obs.quality.scd41 <= 0.0,
-                    warming=False,
-                    stale=stale,
-                ),
-                obs.quality.scd41,
-                None,
-                None,
-            ),
-            (
-                "bme688",
-                map_sensor_lifecycle_state(
-                    quality=obs.quality.bme688,
-                    fault=bool(obs.quality_flags & FLAG_BME_FAULT) or obs.quality.bme688 <= 0.0,
-                    warming=False,
-                    stale=stale,
-                ),
-                obs.quality.bme688,
-                None,
-                None,
-            ),
+        q = obs.quality
+        heater_value = obs.mq_heater_state.value if hasattr(obs.mq_heater_state, "value") else str(obs.mq_heater_state)
+        # (sensor, quality, fault, warming, heater_state, warmup_age_s). quality None = sensor not fitted: no row.
+        specs = [
+            ("pms5003", q.pms, bool(obs.quality_flags & FLAG_PM_FAULT) or (q.pms is not None and q.pms <= 0.0), False, None, None),
+            ("scd41", q.scd41, bool(obs.quality_flags & FLAG_SCD_FAULT) or (q.scd41 is not None and q.scd41 <= 0.0), False, None, None),
+            ("bme688", q.bme688, bool(obs.quality_flags & FLAG_BME_FAULT) or (q.bme688 is not None and q.bme688 <= 0.0), False, None, None),
             (
                 "mq135",
-                map_sensor_lifecycle_state(
-                    quality=obs.quality.mq135,
-                    fault=obs.mq_heater_state == MqHeaterState.FAULT or not obs.mq_present,
-                    warming=obs.mq_heater_state == MqHeaterState.WARMING,
-                    stale=stale,
-                ),
-                obs.quality.mq135,
-                obs.mq_heater_state.value if hasattr(obs.mq_heater_state, "value") else str(obs.mq_heater_state),
+                q.mq135,
+                obs.mq_heater_state == MqHeaterState.FAULT or not obs.mq_present,
+                obs.mq_heater_state == MqHeaterState.WARMING,
+                heater_value,
                 obs.mq_warmup_s,
             ),
         ]
-        for sensor, state, quality, heater, warmup in rows:
+        for sensor, quality, fault, warming, heater, warmup in specs:
+            if quality is None:
+                continue
+            state = map_sensor_lifecycle_state(quality=quality, fault=fault, warming=warming, stale=stale)
             self._db._exec(
                 """
                 INSERT INTO sensor_states (
@@ -238,6 +207,12 @@ class ObservationRepository:
                 """,
                 (obs.wire_id, timestamp, sensor, state, quality, heater, warmup, obs.provenance),
             )
+
+    def exists(self, wire_id: int, sequence: int) -> bool:
+        row = self._db._conn.execute(
+            "SELECT 1 FROM sensor_readings WHERE wire_id = ? AND sequence = ?", (wire_id, sequence)
+        ).fetchone()
+        return row is not None
 
     def fetch_all(self) -> list[dict[str, Any]]:
         return self._db._rows("SELECT * FROM sensor_readings ORDER BY measurement_time, id")

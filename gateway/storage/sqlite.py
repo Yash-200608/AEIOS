@@ -185,6 +185,9 @@ class SqliteRepository(Database):
                 status="ONLINE",
             )
 
+    def reading_exists(self, wire_id: int, sequence: int) -> bool:
+        return self.observations.exists(wire_id, sequence)
+
     def fetch_readings(self) -> list[dict[str, Any]]:
         return self.observations.fetch_all()
 
