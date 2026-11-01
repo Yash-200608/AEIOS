@@ -16,10 +16,15 @@ const preview = import.meta.env.DEV && new URLSearchParams(window.location.searc
 // lazy import and everything it pulls in is dropped from production builds. It never reads Supabase or dashboard state.
 const designLab = import.meta.env.DEV && new URLSearchParams(window.location.search).has('designlab');
 const DesignLab = import.meta.env.DEV ? React.lazy(() => import('./design/DesignLab')) : null;
+// Local development only (/?motionlab): the Motion Lab prototypes. Same DEV guard: GSAP and the lab never reach production.
+const motionLab = import.meta.env.DEV && new URLSearchParams(window.location.search).has('motionlab');
+const MotionLab = import.meta.env.DEV ? React.lazy(() => import('./motion-lab/MotionLab')) : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {designLab && DesignLab
+    {motionLab && MotionLab
+      ? <Suspense fallback={null}><MotionLab /></Suspense>
+      : designLab && DesignLab
       ? <Suspense fallback={null}><DesignLab /></Suspense>
       : preview
       ? <App userEmail="preview" />

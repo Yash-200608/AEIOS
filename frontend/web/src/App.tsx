@@ -9,7 +9,7 @@ import {
   Area, AreaChart, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer,
   Tooltip as ChartTooltip, XAxis, YAxis,
 } from 'recharts';
-import WeatherScene, { type SceneWeather } from './components/WeatherScene';
+import WeatherScene, { layerNorms, type SceneWeather } from './components/WeatherScene';
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
 import Overview from './components/overview/Overview';
@@ -42,9 +42,36 @@ const SCENARIOS = [
   { value: 'baseline', label: 'Baseline replay', note: 'Replay the weather-model baseline without perturbation' },
 ];
 
-function hourlyAt(hourly: Record<string, any[]> | undefined, key: string, index: number, fallback = 0): number {
+/** A finite number, or null when the value is absent or not numeric (never a made-up 0). */
+function numOrNull(value: unknown): number | null {
+  const number = numeric(value, Number.NaN);
+  return Number.isFinite(number) ? number : null;
+}
+
+function hourlyAt(hourly: Record<string, unknown[]> | undefined, key: string, index: number): number | null {
   const values = hourly?.[key];
-  return values && index >= 0 && index < values.length ? numeric(values[index], fallback) : fallback;
+  return values && index >= 0 && index < values.length ? numOrNull(values[index]) : null;
+}
+
+/** Profile-card value: "n/a" for a missing model value. */
+function na(value: number | null | undefined, digits = 0): string {
+  return value == null ? 'n/a' : round(value, digits);
+}
+
+/*
+ * Schematic altitude labels for the 3D scene: the scene's own normalised layer heights (layerNorms), nudged apart only as
+ * far as needed so labels never overlap (min gap 13 % of the label column). Not a projection of the orbiting camera.
+ */
+function altitudeLabelPositions(norms: number[]): number[] {
+  const gap = 0.13;
+  const order = norms.map((n, i) => i).sort((a, b) => norms[a] - norms[b]);
+  const pos = norms.slice();
+  order.forEach((idx, k) => { if (k > 0) pos[idx] = Math.max(pos[idx], pos[order[k - 1]] + gap); });
+  for (let k = order.length - 1; k >= 0; k -= 1) {
+    const ceiling = k === order.length - 1 ? 1 : pos[order[k + 1]] - gap;
+    pos[order[k]] = Math.max(0, Math.min(pos[order[k]], ceiling));
+  }
+  return pos;
 }
 
 function buildDailyRows(daily: Record<string, any[]> | undefined, days: number) {
@@ -108,7 +135,8 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const drawerWasOpen = useRef(false);
-  const [sceneKey, setSceneKey] = useState(0);
+  const [sceneReset, setSceneReset] = useState(0);
+  const [scenePaused, setScenePaused] = useState(false);
 
   const siteConfig = SITES[site];
 
@@ -198,39 +226,45 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const selectedHour = Math.max(0, Math.min(hourIndex, (hourly.time?.length || 1) - 1));
   const selectedTime = String(hourly.time?.[selectedHour] || current.time || '');
   const sceneRow = simulation?.timeline?.[Math.min(selectedHour, (simulation.timeline.length || 1) - 1)];
-  const getValue = (key: string, fallback = 0) => sceneRow && sceneRow[key] != null
-    ? numeric(sceneRow[key], fallback) : hourlyAt(hourly, key, selectedHour, fallback);
+  // Missing model values stay null (shown as "n/a", hidden in the scene); the only fallback is the current-conditions value.
+  const getValue = (key: string, fallback: number | null = null): number | null => (sceneRow && sceneRow[key] != null
+    ? numOrNull(sceneRow[key]) : hourlyAt(hourly, key, selectedHour)) ?? fallback;
+  // Nominal heights only place a pressure level in the scene when the model returns no geopotential height.
+  const pressureLayer = (hPa: number, nominal: number) => {
+    const geopotential = hourlyAt(hourly, `geopotential_height_${hPa}hPa`, selectedHour);
+    return {
+      label: `${hPa} hPa`, speed: getValue(`wind_speed_${hPa}hPa`), direction: getValue(`wind_direction_${hPa}hPa`),
+      altitude: geopotential ?? nominal, geopotential,
+      temperature: getValue(`temperature_${hPa}hPa`), humidity: getValue(`relative_humidity_${hPa}hPa`), cloud: getValue(`cloud_cover_${hPa}hPa`),
+    };
+  };
 
   const sceneWeather: SceneWeather = {
-    windSpeed: getValue('wind_speed_10m', numeric(current.wind_speed_10m, 0)),
-    windDirection: getValue('wind_direction_10m', numeric(current.wind_direction_10m, 0)),
-    gust: getValue('wind_gusts_10m', numeric(current.wind_gusts_10m, 0)),
-    temperature: getValue('temperature_2m', numeric(current.temperature_2m, 25)),
-    cloudCover: getValue('cloud_cover', numeric(current.cloud_cover, 30)),
-    cloudLow: getValue('cloud_cover_low', hourlyAt(hourly, 'cloud_cover_low', selectedHour, 25)),
-    cloudMid: getValue('cloud_cover_mid', hourlyAt(hourly, 'cloud_cover_mid', selectedHour, 35)),
-    cloudHigh: getValue('cloud_cover_high', hourlyAt(hourly, 'cloud_cover_high', selectedHour, 45)),
-    precipitation: getValue('precipitation', numeric(current.precipitation, 0)),
+    windSpeed: getValue('wind_speed_10m', numOrNull(current.wind_speed_10m)),
+    windDirection: getValue('wind_direction_10m', numOrNull(current.wind_direction_10m)),
+    gust: getValue('wind_gusts_10m', numOrNull(current.wind_gusts_10m)),
+    temperature: getValue('temperature_2m', numOrNull(current.temperature_2m)),
+    cloudCover: getValue('cloud_cover', numOrNull(current.cloud_cover)),
+    cloudLow: getValue('cloud_cover_low'),
+    cloudMid: getValue('cloud_cover_mid'),
+    cloudHigh: getValue('cloud_cover_high'),
+    precipitation: getValue('precipitation', numOrNull(current.precipitation)),
     layer,
     scenarioActive: Boolean(sceneRow?.scenario_active),
-    dustLoading: numeric(sceneRow?.dust_scenario_index, 0),
+    dustLoading: numeric(sceneRow?.dust_scenario_index, 0), // no scenario row = no dust overlay
     windLayers: [
-      { label: '10 m AGL', speed: getValue('wind_speed_10m', 0), direction: getValue('wind_direction_10m', 0), altitude: 10,
-        temperature: getValue('temperature_2m', 0), humidity: getValue('relative_humidity_2m', 0), cloud: getValue('cloud_cover', 0) },
-      { label: '80 m AGL', speed: getValue('wind_speed_80m', 0), direction: getValue('wind_direction_80m', getValue('wind_direction_10m', 0)), altitude: 80,
-        temperature: getValue('temperature_80m', 0) },
-      { label: '950 hPa', speed: getValue('wind_speed_950hPa', 0), direction: getValue('wind_direction_950hPa', 0), altitude: hourlyAt(hourly, 'geopotential_height_950hPa', selectedHour, 500),
-        temperature: getValue('temperature_950hPa', 0), humidity: getValue('relative_humidity_950hPa', 0), cloud: getValue('cloud_cover_950hPa', 0) },
-      { label: '925 hPa', speed: getValue('wind_speed_925hPa', 0), direction: getValue('wind_direction_925hPa', 0), altitude: hourlyAt(hourly, 'geopotential_height_925hPa', selectedHour, 800),
-        temperature: getValue('temperature_925hPa', 0), humidity: getValue('relative_humidity_925hPa', 0), cloud: getValue('cloud_cover_925hPa', 0) },
-      { label: '850 hPa', speed: getValue('wind_speed_850hPa', 0), direction: getValue('wind_direction_850hPa', 0), altitude: hourlyAt(hourly, 'geopotential_height_850hPa', selectedHour, 1500),
-        temperature: getValue('temperature_850hPa', 0), humidity: getValue('relative_humidity_850hPa', 0), cloud: getValue('cloud_cover_850hPa', 0) },
-      { label: '700 hPa', speed: getValue('wind_speed_700hPa', 0), direction: getValue('wind_direction_700hPa', 0), altitude: hourlyAt(hourly, 'geopotential_height_700hPa', selectedHour, 3000),
-        temperature: getValue('temperature_700hPa', 0), humidity: getValue('relative_humidity_700hPa', 0), cloud: getValue('cloud_cover_700hPa', 0) },
-      { label: '500 hPa', speed: getValue('wind_speed_500hPa', 0), direction: getValue('wind_direction_500hPa', 0), altitude: hourlyAt(hourly, 'geopotential_height_500hPa', selectedHour, 5600),
-        temperature: getValue('temperature_500hPa', 0), humidity: getValue('relative_humidity_500hPa', 0), cloud: getValue('cloud_cover_500hPa', 0) },
+      { label: '10 m AGL', speed: getValue('wind_speed_10m'), direction: getValue('wind_direction_10m'), altitude: 10,
+        temperature: getValue('temperature_2m'), humidity: getValue('relative_humidity_2m'), cloud: getValue('cloud_cover') },
+      { label: '80 m AGL', speed: getValue('wind_speed_80m'), direction: getValue('wind_direction_80m'), altitude: 80,
+        temperature: getValue('temperature_80m') },
+      pressureLayer(950, 500),
+      pressureLayer(925, 800),
+      pressureLayer(850, 1500),
+      pressureLayer(700, 3000),
+      pressureLayer(500, 5600),
     ],
   };
+  const altitudeLabelPos = altitudeLabelPositions(layerNorms(sceneWeather.windLayers));
 
   const next72 = useMemo(() => {
     const n = Math.min(72, hourly.time?.length || 0);
@@ -382,11 +416,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
               </div>
             </div>
             <div className="scene-frame">
-              <WeatherScene key={sceneKey} weather={sceneWeather} />
+              <WeatherScene weather={sceneWeather} paused={scenePaused} resetSignal={sceneReset} />
               <div className="scene-tag scene-tag-top"><span className="status-led" /> 3D MODEL VIEW · {simulation ? 'SCENARIO OVERLAY' : 'FORECAST FIELD'}</div>
               <div className="scene-tag scene-tag-bottom"><span className="scene-key"><i className="key-wind" /> WIND PARTICLES</span><span className="scene-key"><i className="key-cloud" /> CLOUD LAYERS</span><span className="scene-key"><i className="key-site" /> STATION SITES</span><span className="scene-gesture">DRAG / SWIPE TO ROTATE · SCROLL / PINCH TO ZOOM</span></div>
-              <button className="scene-reset" onClick={() => setSceneKey((k) => k + 1)}>Reset view</button>
-              <div className="scene-altitude" aria-hidden="true">500 hPa<br /><span>700 hPa</span><br /><span>850 hPa</span><br /><span>925 hPa</span><br /><span>10–80 m AGL</span></div>
+              <div style={{ position: 'absolute', right: 12, top: 44, zIndex: 3, display: 'flex', gap: 8 }}><button className="scene-reset" style={{ position: 'static' }} aria-pressed={scenePaused} aria-label={scenePaused ? 'Resume 3D scene' : 'Pause 3D scene'} onClick={() => setScenePaused((p) => !p)}>{scenePaused ? 'Resume' : 'Pause'}</button><button className="scene-reset" style={{ position: 'static' }} onClick={() => setSceneReset((n) => n + 1)}>Reset view</button></div>
+              <div className="scene-altitude" aria-hidden="true"><span className="scene-altitude-note">SCHEMATIC HEIGHTS</span><ol>{sceneWeather.windLayers.map((l, i) => <li key={l.label} className={l.speed == null || l.direction == null ? 'missing' : undefined} style={{ bottom: `${altitudeLabelPos[i] * 100}%` }}>{l.label}{l.speed == null || l.direction == null ? ' · n/a' : ''}</li>)}</ol></div>
             </div>
             <div className="scene-controls">
               <div className="timeline-label"><b>{selectedTime ? formatDay(selectedTime.slice(0, 10), { weekday: 'short', day: 'numeric', month: 'short' }) : 'Forecast'}</b><span>{formatHour(selectedTime)}</span></div>
@@ -396,7 +430,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
             {simulation && <div className="scenario-active-note"><Zap size={14} /> Scenario overlay active: {simulation.scenario_label}. These are controlled perturbations, not forecast updates. <button onClick={clearSimulation}>Return to model</button></div>}
             <div className="profile-heading"><b>VERTICAL WIND PROFILE</b><span>m AGL = metres above ground level. hPa = air-pressure level, not a height; its geopotential height is the model's height for that pressure surface.</span></div>
             <div className="vertical-profile-grid">
-              {sceneWeather.windLayers.map((windLayer) => <div key={windLayer.label}><span>{windLayer.label.toUpperCase()}</span><b>{round(windLayer.speed, 1)} <small>m/s</small></b><em>{round(windLayer.temperature, 1)}°C · {round(windLayer.humidity)}% RH</em>{windLayer.label.includes('hPa') && <em>Geopotential {round(windLayer.altitude)} m</em>}</div>)}
+              {sceneWeather.windLayers.map((windLayer) => <div key={windLayer.label}><span>{windLayer.label.toUpperCase()}</span><b>{na(windLayer.speed, 1)}{windLayer.speed != null && <> <small>m/s</small></>}</b><em>{na(windLayer.temperature, 1)}{windLayer.temperature != null ? '°C' : ''} · {na(windLayer.humidity)}{windLayer.humidity != null ? '%' : ''} RH</em>{windLayer.label.includes('hPa') && <em>Geopotential {windLayer.geopotential != null ? `${round(windLayer.geopotential)} m` : 'n/a'}</em>}</div>)}
             </div>
             <div className="visualization-disclaimer"><AlertTriangle size={13} /> 3D view uses forecast wind vectors at near-surface heights and 950–500 hPa pressure levels, cloud-layer coverage and precipitation. Pressure-level heights vary with weather; geopotential height is used when returned. This is a model-field visualization, not a CFD solver, radar or direct upper-air sounding.</div>
           </div>

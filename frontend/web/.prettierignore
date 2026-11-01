@@ -1,0 +1,19 @@
+# Build output and dependencies
+dist
+node_modules
+tsconfig.tsbuildinfo
+package-lock.json
+
+# Recorded Open-Meteo responses used by the browser tests (data, not source)
+tests/e2e/fixtures
+
+# Legacy files written before Prettier was adopted. They are not reformatted in this phase; the
+# format gate (npm run format:check) covers the motion-phase surface only.
+src/App.tsx
+src/styles.css
+src/components/*.tsx
+!src/components/WeatherScene.tsx
+!src/components/VentilationChart.tsx
+src/lib/**
+src/design/DesignLab.tsx
+src/design/lab.css
