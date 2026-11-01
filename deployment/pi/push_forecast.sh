@@ -29,7 +29,7 @@ cp -r "$MODEL_DIR" "$STAGE/ai/models/registry/pm25_lgbm_cqr/$VERSION"
 cp "$ROOT/ai/requirements-runtime.txt" "$STAGE/"
 cp "$ROOT/edge/v0/systemd/aeios-forecast.service" "$ROOT/edge/v0/systemd/aeios-forecast.timer" "$STAGE/units/"
 cp "$HERE/forecast.env.example" "$STAGE/"
-(cd "$ROOT" && "$PY" -m ai.service.stations --out "$STAGE/stations.json" --model-dir "$MODEL_DIR")
+(cd "$ROOT" && "$PY" -m ai.service.stations --out "$STAGE/stations.json" --model-dir "$MODEL_DIR" --nodes deployment/pi/v0_nodes.example.json)
 tar -C "$STAGE" -cf "$STAGE/bundle.tar" ai requirements-runtime.txt stations.json units forecast.env.example
 
 echo "Target : $AEIOS_PI:~/aeios_ai   model $VERSION   bundle $(du -h "$STAGE/bundle.tar" | cut -f1)   enable timer: $([ $ENABLE = 1 ] && echo yes || echo no)"

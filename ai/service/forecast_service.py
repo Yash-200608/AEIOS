@@ -36,6 +36,7 @@ from ai.inference.engine import ForecastEngine
 from ai.preprocessing.common import JsonClient, RateLimiter
 from ai.preprocessing.openaq_fetch import BASE_URL as OPENAQ_URL
 from ai.service import live_inputs as LI
+from ai.service import node_inputs as NI
 from ai.service.stations import load as load_stations
 
 HORIZONS = (1, 3, 6, 12, 24)
@@ -79,14 +80,18 @@ def open_store(path: str) -> sqlite3.Connection:
 
 def forecast_station(st: dict, pm: Series, wx: dict[str, Series], weather_note: str, engine: ForecastEngine, now: datetime,
                      problems: list[str]) -> list[dict]:
-    """Rows (one per horizon) for one station. Pure function of its inputs, so it is easy to test."""
+    """Rows (one per horizon) for one station or node. Pure function of its inputs, so it is easy to test."""
+    is_node = bool(st.get("node"))
+    label = st.get("input_label") or f"CPCB {st['name']} (OpenAQ hourly mean, not an AEIOS node)"
     base = {"station": st["name"], "location_id": st["location_id"], "station_code": st["station_code"],
-            "made_utc": iso(int(now.timestamp())), "input_source": f"CPCB {st['name']} (OpenAQ hourly mean, not an AEIOS node)",
-            "weather_source": weather_note}
+            "made_utc": iso(int(now.timestamp())), "input_source": label, "weather_source": weather_note}
     origin = LI.latest_origin(pm, now)
     stale_h = None if origin is None else (int(LI.floor_hour(now).timestamp()) - origin) / HOUR
     if origin is None or stale_h > MAX_STALE_H:
-        why = "no clean PM2.5 reading in the last 36 h" if origin is None else f"newest clean reading is {stale_h:.0f} h old (limit {MAX_STALE_H} h)"
+        why = ("no clean PM2.5 reading in the last 36 h" if origin is None
+               else f"newest clean reading is {stale_h:.0f} h old (limit {MAX_STALE_H} h)")
+        if is_node:
+            why = "node not reporting: " + why
         if problems:
             why += "; " + "; ".join(problems)
         return [dict(base, horizon_h=h, source="no_input", model_version=None, origin_utc=None if origin is None else iso(origin),
@@ -100,6 +105,8 @@ def forecast_station(st: dict, pm: Series, wx: dict[str, Series], weather_note: 
         reason = f.get("reason", "")
         if weather_note.startswith("unavailable"):
             reason = (reason + "; " if reason else "") + "weather unavailable: forecast is degraded"
+        if is_node:
+            reason = (reason + "; " if reason else "") + NI.NODE_CAVEAT
         rows.append(dict(base, horizon_h=h, source=f["source"], model_version=f.get("model_version"), origin_utc=iso(origin),
                          due_utc=iso(origin + h * HOUR), stale_h=stale_h, pm_now=feats["pm_now"], q10=f.get("q10"), q50=f.get("q50"),
                          q90=f.get("q90"), interval=f.get("interval"), drivers=json.dumps(f["drivers"]) if f.get("drivers") else None,
@@ -165,13 +172,28 @@ def _post(url: str, token: str, body: dict, timeout: int = 30) -> dict:
 
 
 def run_once(cfg: dict, engine: ForecastEngine, openaq: JsonClient, weather: JsonClient, conn: Optional[sqlite3.Connection],
-             now: Optional[datetime] = None) -> dict:
+             now: Optional[datetime] = None, node_db: Optional[str] = None) -> dict:
     now = now or datetime.now(timezone.utc)
     site = cfg["weather_site"]
     wx, wproblem = LI.fetch_weather(weather, site["lat"], site["lon"])
     note = f"unavailable ({wproblem})" if wproblem else "Open-Meteo analysis (training used ERA5 reanalysis)"
-    summary = {"stations": 0, "forecast_rows": 0, "no_input": 0, "stored": 0, "verified": 0, "engine": engine.version or f"fallback: {engine.reason}",
+    summary = {"nodes": 0, "stations": 0, "forecast_rows": 0, "no_input": 0, "stored": 0, "verified": 0, "engine": engine.version or f"fallback: {engine.reason}",
                "weather": note, "rows": []}
+    # Primary: the AEIOS nodes. Each node's series comes from the Pi's intelligence database; without it the node reports no input.
+    for n in cfg.get("nodes", []):
+        pm = NI.hourly_series(node_db, n["wire_id"], now) if node_db else Series()
+        st = {"name": n["display_id"], "location_id": n["location_id"], "station_code": n["station_code"], "node": True,
+              "input_label": f"AEIOS node {n['display_id']} (PMS5003 readings, hourly mean; nearest CPCB station {n['nearest_cpcb']} used as model context)"}
+        problems = [] if node_db else ["node database not configured"]
+        rows = forecast_station(st, pm, wx, note, engine, now, problems)
+        summary["nodes"] += 1
+        summary["no_input"] += sum(r["source"] == "no_input" for r in rows)
+        summary["forecast_rows"] += sum(r["source"] != "no_input" for r in rows)
+        summary["rows"].extend(rows)
+        if conn is not None:
+            summary["stored"] += store_rows(conn, rows)
+            summary["verified"] += verify(conn, st, pm, now)
+    # Fallback: CPCB reference stations, so the picture is never empty while a node is off.
     for st in cfg["stations"]:
         pm, problems = LI.fetch_station_pm(openaq, st["pm25_sensor_ids"], now)
         rows = forecast_station(st, pm, wx, note, engine, now, problems)
@@ -208,10 +230,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="compute and print; store and upload nothing")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--report", action="store_true", help="print live verification results and exit")
+    ap.add_argument("--node-db", default=None, help="the Pi's intelligence database (aeios.db) holding node readings")
     a = ap.parse_args(argv)
 
     if a.report:
         print(report(open_store(a.db)))
+        if a.node_db and os.path.exists(a.node_db):
+            cfg_r = load_stations(Path(a.stations)) if os.path.exists(a.stations) else {"nodes": []}
+            for r in NI.training_readiness(a.node_db, [n["wire_id"] for n in cfg_r["nodes"]]):
+                print(f"node {r['wire_id']}: {r['hours']} h of hourly history; node-trained model needs {r['target_hours']} h "
+                      f"({'ready' if r['ready_for_node_model'] else 'not yet'})")
         return 0
     key = os.environ.get("OPENAQ_API_KEY", "").strip()
     if not key:
@@ -223,9 +251,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     openaq = JsonClient(OPENAQ_URL, {"X-API-Key": key}, RateLimiter(40))
     weather = JsonClient(WEATHER_URL, limiter=RateLimiter(20))
     conn = None if a.dry_run else open_store(a.db)
-    s = run_once(cfg, engine, openaq, weather, conn)
+    s = run_once(cfg, engine, openaq, weather, conn, node_db=a.node_db)
     log(f"engine {s['engine']}; weather {s['weather']}")
-    log(f"{s['stations']} stations: {s['forecast_rows']} forecast rows, {s['no_input']} no_input, {s['stored']} stored, {s['verified']} outcomes verified")
+    log(f"{s['nodes']} nodes and {s['stations']} CPCB stations: {s['forecast_rows']} forecast rows, {s['no_input']} no_input, {s['stored']} stored, {s['verified']} outcomes verified")
     if a.dry_run:
         for r in s["rows"]:
             if r["horizon_h"] in (1, 6, 24):
