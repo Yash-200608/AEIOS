@@ -7,7 +7,7 @@ import { AlertTriangle, Pause, Play } from 'lucide-react';
 import { fireEmission, sampleFrame, type Config, type Source } from '../sim/dispersion';
 import type { WorkerIn, WorkerOut } from '../sim/dispersion.worker';
 import { isosurface } from '../sim/isosurface';
-import { fetchLocalMet, fetchTerrain, manualMet, type Domain, type LocalMet } from '../lib/localWinds';
+import { fetchLocalMet, fetchTerrain, manualMet, withMinuteRetry, type Domain, type LocalMet } from '../lib/localWinds';
 import type { Fire } from '../lib/trajectory';
 
 const DOMAIN: Domain = { lat: 28.4782417, lon: 76.9040528, halfKm: 24 };     // centred on SGT University
@@ -75,8 +75,11 @@ function DispersionTwinInner() {
   // ---- data
   useEffect(() => {
     let alive = true;
-    fetchLocalMet(DOMAIN, Date.now(), HORIZON_H).then((m) => alive && setMet(m)).catch((e) => { if (alive) { setMetErr(String(e.message || e)); setMode('manual'); } });
-    fetchTerrain(DOMAIN, 20).then((t) => alive && setTerrain(t));
+    // winds first, then terrain: the terrain request is large and should not compete with them for the per-minute allowance
+    withMinuteRetry(() => fetchLocalMet(DOMAIN, Date.now(), HORIZON_H))
+      .then((m) => { if (alive) { setMet(m); setMetErr(''); setMode('forecast'); } })
+      .catch((e) => { if (alive) { setMetErr(String(e.message || e)); setMode('manual'); } })
+      .finally(() => { if (alive) fetchTerrain(DOMAIN, 16).then((t) => alive && setTerrain(t)); });
     fetch(FIRES_URL).then((r) => r.json()).then((d) => alive && setFires((d.fires || []) as Fire[])).catch(() => undefined);
     return () => { alive = false; };
   }, []);

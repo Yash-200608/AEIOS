@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildForcing, forcingPoints, manualMet } from './localWinds';
+import { buildForcing, forcingPoints, manualMet, withMinuteRetry } from './localWinds';
 import { runDispersion, sampleFrame, type Config } from '../sim/dispersion';
 
 const T = Array.from({ length: 30 }, (_, i) => `2026-10-31T${String(i % 24).padStart(2, '0')}:00`.replace('2026-10-31', i < 24 ? '2026-10-31' : '2026-11-01'));
@@ -81,5 +81,25 @@ describe('manualMet', () => {
     expect(Math.abs(m.forcing.u[0])).toBeLessThan(1e-5);
     expect(m.forcing.nT).toBe(14);
     expect(m.blhNow).toBe(900);
+  });
+});
+
+describe('withMinuteRetry', () => {
+  const noWait = () => Promise.resolve();
+  it('retries after a per-minute refusal and then succeeds', async () => {
+    let n = 0;
+    const out = await withMinuteRetry(async () => { n += 1; if (n < 3) throw new Error('Wind data unavailable: Minutely API request limit exceeded.'); return 'ok'; }, 3, 1, noWait);
+    expect(out).toBe('ok');
+    expect(n).toBe(3);
+  });
+  it('does not retry a daily limit or any other error', async () => {
+    let n = 0;
+    await expect(withMinuteRetry(async () => { n += 1; throw new Error('Daily API request limit exceeded'); }, 3, 1, noWait)).rejects.toThrow('Daily');
+    expect(n).toBe(1);
+  });
+  it('gives up after the allowed number of tries', async () => {
+    let n = 0;
+    await expect(withMinuteRetry(async () => { n += 1; throw new Error('Minutely API request limit exceeded'); }, 2, 1, noWait)).rejects.toThrow('Minutely');
+    expect(n).toBe(2);
   });
 });

@@ -76,6 +76,18 @@ export function buildForcing(payload: any[], startMs: number, hours: number): Lo
   };
 }
 
+/** Open-Meteo's free tier limits calls per minute as well as per day, and this dashboard issues many at once. A per-minute refusal is
+ *  retried after the cooldown; a daily limit or any other error is returned immediately. */
+export async function withMinuteRetry<T>(fn: () => Promise<T>, tries = 3, waitMs = 20000, sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try { return await fn(); } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (attempt >= tries || !/minutely/i.test(msg)) throw e;
+      await sleep(waitMs);
+    }
+  }
+}
+
 export async function fetchLocalMet(d: Domain, startMs = Date.now(), hours = 12): Promise<LocalMet> {
   const pts = forcingPoints(d);
   const vars = [
