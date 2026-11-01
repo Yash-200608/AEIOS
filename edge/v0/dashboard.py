@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Gateway dashboard (standard library only, works offline). Open http://<pi>:8080
 JSON: /api/overview /api/history?hours=24 /api/predictions /api/accuracy /api/anomalies /api/recent /api/latest
-Usage: dashboard.py [--db PATH] [--port 8080]      e.g. --db ml/demo.db --port 8081 for the SYNTHETIC demo
+      /api/fc (PM2.5 forecasts: nodes first, CPCB fallback) /api/intel (intelligence pipeline results)
+Usage: dashboard.py [--db PATH] [--forecast-db PATH] [--intel-db PATH] [--port 8080]
+       e.g. --db ml/demo.db --port 8081 for the SYNTHETIC demo
 """
 import argparse, bisect, calendar, json, os, sqlite3, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +18,36 @@ def q(sql, args=()):
     db = sqlite3.connect(gwdb.DB_PATH, timeout=10); db.row_factory = sqlite3.Row
     try: return [dict(r) for r in db.execute(sql, args)]
     finally: db.close()
+
+FC_DB = None      # the forecast service's forecasts.db (read-only here)
+INTEL_DB = None   # the intelligence pipeline's aeios.db (read-only here)
+
+def q_db(path, sql, args=()):
+    if not path or not os.path.exists(path): return []
+    db = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10); db.row_factory = sqlite3.Row
+    try: return [dict(r) for r in db.execute(sql, args)]
+    finally: db.close()
+
+def forecasts():
+    """Latest run per (station, horizon). Node forecasts are the main picture; CPCB stations are the fallback."""
+    rows = q_db(FC_DB, """SELECT f.station, f.location_id, f.horizon_h, f.made_utc, f.due_utc, f.source, f.model_version, f.input_source,
+                          f.stale_h, f.pm_now, f.q10, f.q50, f.q90, f.reason FROM forecasts f
+                          WHERE f.id IN (SELECT MAX(id) FROM forecasts GROUP BY location_id, horizon_h) ORDER BY f.location_id, f.horizon_h""")
+    v = q_db(FC_DB, "SELECT count(*) AS n FROM outcomes")
+    return {"present": bool(FC_DB and os.path.exists(FC_DB)), "nodes": [r for r in rows if r["location_id"] >= 900000],
+            "cpcb": [r for r in rows if r["location_id"] < 900000], "verified": v[0]["n"] if v else 0}
+
+def intel():
+    """What the Pi's intelligence pipeline has stored from the receiver's packets."""
+    if not (INTEL_DB and os.path.exists(INTEL_DB)): return {"present": False}
+    latest = q_db(INTEL_DB, """SELECT r.wire_id, r.measurement_time, r.pm1, r.pm25, r.pm10, r.temperature, r.humidity, r.quality_flags, r.provenance
+                               FROM sensor_readings r WHERE r.id IN (SELECT MAX(id) FROM sensor_readings GROUP BY wire_id) ORDER BY r.wire_id""")
+    totals = q_db(INTEL_DB, "SELECT (SELECT count(*) FROM sensor_readings) AS readings, (SELECT count(*) FROM events) AS events, "
+                            "(SELECT count(*) FROM system_logs) AS logs")
+    events = q_db(INTEL_DB, "SELECT event_id, wire_id, started_at, ended_at, event_type, severity, status, event_confidence "
+                            "FROM events ORDER BY event_id DESC LIMIT 10")
+    logs = q_db(INTEL_DB, "SELECT timestamp, component, level, code, message FROM system_logs ORDER BY id DESC LIMIT 10")
+    return {"present": True, "latest": latest, "totals": totals[0] if totals else {}, "events": events, "logs": logs}
 
 def epoch(s): return calendar.timegm(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 def utc(e): return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(e))
@@ -170,6 +202,8 @@ footer p{margin:0 0 6px;max-width:80ch}
   <div id="fc" class="grid"></div></section>
 <section><div class="sh"><h2>Forecast accuracy</h2><span class="muted">forecasts that came due in the last 24 h, checked against what arrived</span></div><div id="acc"></div></section>
 <section><div class="sh"><h2>Unusual readings</h2><span class="muted">far from that signal's own last 24 h; a flag is not a hazard by itself</span></div><div id="anom"></div></section>
+<section><div class="sh"><h2>Forecast · node first</h2><span class="muted">PM2.5 from each node's own readings; CPCB stations are the fallback when nodes are silent</span></div><div id="fc2"></div></section>
+<section><div class="sh"><h2>Intelligence pipeline</h2><span class="muted">quality checks, baselines and detections run on every packet received</span></div><div id="intel"></div></section>
 <section><details><summary>Recent packets</summary><div id="pk" class="tw"></div></details></section>
 <footer>
   <p>PM values come from uncalibrated PMS5003 sensors; MQ135 and gas resistance are relative signals, not concentrations.</p>
@@ -278,6 +312,35 @@ function renderAnom(){
     <b>${NAMES[x.signal]||esc(x.signal)} ${x.z>0?'high':'low'}</b><span>${f(x.value,DEC[x.signal]||0)} ${UNITS[x.signal]||''}</span>
     <span class="muted">24 h median ${f(x.median_24h,DEC[x.signal]||0)} · ${f(Math.abs(x.z),1)} robust deviations${x.source==='synthetic'?' · synthetic':''}</span></li>`).join('')}</ul>`:empty('Nothing unusual so far.');
 }
+function renderFc2(){
+  const fc=D.fc||{};
+  if(!fc.present){$('#fc2').innerHTML='<div class="empty">Forecast service not connected on this device.</div>';return}
+  const block=(title,rows,note)=>{
+    if(!rows.length)return `<div class="empty">${esc(title)}: no forecast yet.</div>`;
+    const by={};rows.forEach(r=>{(by[r.location_id]=by[r.location_id]||[]).push(r)});
+    return `<h3 style="margin:10px 0 4px">${esc(title)}</h3><div class="muted" style="font-size:.8rem;margin-bottom:6px">${esc(note)}</div>`+
+      Object.values(by).map(rs=>{const r0=rs[0],off=r0.source==='no_input';
+        const badge=r0.source==='lightgbm_cqr'?'model':r0.source==='fallback_persistence'?'same as now':'no input';
+        return `<article class="card"><div class="ch"><h3>${esc(r0.station)}</h3><span class="st ${off?'late':''}">${badge}</span>${off?`<span class="muted">${esc(r0.reason||'')}</span>`:`<span class="muted">made ${esc(r0.made_utc)} UTC · latest reading ${f(r0.pm_now)} µg/m³</span>`}</div>
+        ${off?'':`<div class="hz">${rs.map(p=>`<div><span class="muted">+${p.horizon_h} h</span><b>${f(p.q50)}<span class="unit">µg/m³</span></b><span class="muted">${f(p.q10)}–${f(p.q90)} · 80 % band</span></div>`).join('')}</div>`}
+        <div class="muted" style="font-size:.78rem;margin-top:6px">${esc(r0.input_source||'')}${r0.reason&&!off?' · '+esc(r0.reason):''}</div></article>`}).join('');
+  };
+  $('#fc2').innerHTML=block('AEIOS nodes',fc.nodes,"Main forecast: the model applied to each node's PM2.5. Not validated on node data yet.")+
+    block('CPCB reference stations (fallback)',fc.cpcb,'Model run on CPCB station data around Gurugram; shown while nodes are silent.')+
+    `<div class="muted" style="margin-top:8px">${fc.verified} forecasts have been checked against what was observed.</div>`;
+}
+function renderIntel(){
+  const it=D.it||{};
+  if(!it.present){$('#intel').innerHTML='<div class="empty">Intelligence pipeline database not connected on this device.</div>';return}
+  const t=it.totals||{};
+  const latest=it.latest.length?`<table><tr><th>node</th><th>last reading (IST)</th><th>PM2.5</th><th>PM10</th><th>temp</th><th>RH</th><th>flags</th><th>source</th></tr>${
+    it.latest.map(r=>`<tr><td>${esc(r.wire_id)}</td><td>${ist(r.measurement_time*1000,true)}</td><td>${f(r.pm25)}</td><td>${f(r.pm10)}</td><td>${f(r.temperature,1)}</td><td>${f(r.humidity)}</td><td>${esc(r.quality_flags)}</td><td>${esc(r.provenance)}</td></tr>`).join('')}</table>`:'<div class="empty">No node readings stored yet.</div>';
+  const ev=it.events.length?`<h3 style="margin:10px 0 4px">Detected events</h3><table><tr><th>started (IST)</th><th>node</th><th>type</th><th>status</th><th>confidence</th></tr>${
+    it.events.map(e=>`<tr><td>${ist(e.started_at*1000,true)}</td><td>${esc(e.wire_id)}</td><td>${esc(e.event_type)}</td><td>${esc(e.status)}</td><td>${f(e.event_confidence,2)}</td></tr>`).join('')}</table>`:'<div class="muted" style="margin-top:8px">No events detected in the stored readings.</div>';
+  const lg=it.logs.length?`<h3 style="margin:10px 0 4px">Recent pipeline messages</h3><table><tr><th>time (IST)</th><th>level</th><th>code</th><th>message</th></tr>${
+    it.logs.map(l=>`<tr><td>${ist(l.timestamp*1000,true)}</td><td>${esc(l.level)}</td><td>${esc(l.code)}</td><td>${esc(l.message)}</td></tr>`).join('')}</table>`:'';
+  $('#intel').innerHTML=`<div class="muted">${f(t.readings,0)} readings · ${f(t.events,0)} events · ${f(t.logs,0)} pipeline messages stored</div>${latest}${ev}${lg}`;
+}
 function renderPackets(){
   const k=['rx_utc','node','boot','temp','rh','pressure','gas_kohm','pm1','pm2_5','pm10','mq_mv','rssi','snr','source'];
   $('#pk').innerHTML=D.re.length?`<table><tr>${k.map(x=>`<th>${x==='rx_utc'?'received (IST)':NAMES[x]||x}</th>`).join('')}</tr>${
@@ -285,10 +348,10 @@ function renderPackets(){
 }
 async function load(){
   try{
-    const [ov,hi,pr,ac,an,re]=await Promise.all(['overview','history?hours=24','predictions','accuracy','anomalies','recent']
+    const [ov,hi,pr,ac,an,re,fc,it]=await Promise.all(['overview','history?hours=24','predictions','accuracy','anomalies','recent','fc','intel']
       .map(p=>fetch('/api/'+p,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})));
-    D={ov,hi,pr,ac,an,re};
-    renderHead();renderNodes();renderForecast();renderAcc();renderAnom();renderPackets();
+    D={ov,hi,pr,ac,an,re,fc,it};
+    renderHead();renderNodes();renderForecast();renderFc2();renderIntel();renderAcc();renderAnom();renderPackets();
   }catch(e){$('#updated').textContent='Gateway not answering, retrying…'}
 }
 document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{target=b.dataset.t;try{localStorage.setItem('gw-target',target)}catch(e){}if(D)renderForecast()}));
@@ -300,7 +363,7 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path); qs = parse_qs(u.query)
         routes = {"/api/latest": latest, "/api/recent": recent, "/api/overview": overview, "/api/predictions": predictions,
-                  "/api/accuracy": accuracy, "/api/anomalies": anomalies,
+                  "/api/accuracy": accuracy, "/api/anomalies": anomalies, "/api/fc": forecasts, "/api/intel": intel,
                   "/api/history": lambda: history(min(max(float(qs.get("hours", ["24"])[0]), 1), 72))}
         try:
             if u.path in routes: body, ct, code = json.dumps(routes[u.path]()), "application/json", 200
@@ -314,8 +377,11 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--db"); ap.add_argument("--port", type=int, default=8080)
+    ap.add_argument("--forecast-db"); ap.add_argument("--intel-db")
     a = ap.parse_args()
     if a.db: gwdb.DB_PATH = os.path.abspath(a.db)
+    FC_DB = os.path.abspath(os.path.expanduser(a.forecast_db)) if a.forecast_db else None
+    INTEL_DB = os.path.abspath(os.path.expanduser(a.intel_db)) if a.intel_db else None
     gwdb.connect().close()
     print(f"dashboard on http://0.0.0.0:{a.port} ({gwdb.DB_PATH})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", a.port), H).serve_forever()

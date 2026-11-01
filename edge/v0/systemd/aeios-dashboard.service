@@ -3,7 +3,7 @@ Description=AEIOS gateway dashboard on port 8080
 
 [Service]
 WorkingDirectory=%h/gateway
-ExecStart=/usr/bin/python3 -u dashboard.py --port 8080
+ExecStart=/usr/bin/python3 -u dashboard.py --port 8080 --forecast-db %h/aeios_ai/forecasts.db --intel-db %h/aeios_intel/var/aeios.db
 Restart=always
 RestartSec=5
 StandardOutput=append:%h/gateway/logs/dashboard.log
