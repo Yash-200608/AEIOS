@@ -1,0 +1,540 @@
+{
+ "meta": {
+  "generated": "2026-10-31 19:29 UTC",
+  "platform": "Windows AMD64, Python 3.12.10"
+ },
+ "faults": {
+  "train_rows": 26538,
+  "train_class_counts": [
+   19806,
+   1910,
+   336,
+   1345,
+   1335,
+   1806
+  ],
+  "rules": {
+   "stuck_run": 3,
+   "spike_abs": 100.0,
+   "spike_ratio": 3.0,
+   "drift_lr": 0.4
+  },
+  "held_out": [
+   "Vikas Sadan, Gurugram - HSPCB",
+   "Dwarka-Sector 8, Delhi - DPCC",
+   "NISE Gwal Pahari, Gurugram - IMD"
+  ],
+  "fit_seconds": 3.851266384124756,
+  "sets": {
+   "same-distribution test": {
+    "rows": 8460,
+    "class_counts": [
+     6344,
+     574,
+     80,
+     476,
+     430,
+     556
+    ],
+    "random_forest": {
+     "per_class": {
+      "normal": {
+       "precision": 0.9388843977364592,
+       "recall": 0.9153530895334174,
+       "f1": 0.926969430920265,
+       "support": 6344
+      },
+      "stuck": {
+       "precision": 0.709838107098381,
+       "recall": 0.9930313588850174,
+       "f1": 0.8278867102396514,
+       "support": 574
+      },
+      "spike": {
+       "precision": 0.7789473684210526,
+       "recall": 0.925,
+       "f1": 0.8457142857142858,
+       "support": 80
+      },
+      "sentinel": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 476
+      },
+      "dropout": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 430
+      },
+      "drift": {
+       "precision": 0.39278131634819535,
+       "recall": 0.3327338129496403,
+       "f1": 0.3602726387536514,
+       "support": 556
+      }
+     },
+     "macro_f1_faults": 0.8067747269415178,
+     "confusion": [
+      [
+       5807,
+       230,
+       21,
+       0,
+       0,
+       286
+      ],
+      [
+       4,
+       570,
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       6,
+       0,
+       74,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       476,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0,
+       430,
+       0
+      ],
+      [
+       368,
+       3,
+       0,
+       0,
+       0,
+       185
+      ]
+     ],
+     "false_flag_rate_on_normal": 0.0846469104665826
+    },
+    "rules": {
+     "per_class": {
+      "normal": {
+       "precision": 0.9260668210387033,
+       "recall": 0.8825662042875158,
+       "f1": 0.9037933817594834,
+       "support": 6344
+      },
+      "stuck": {
+       "precision": 0.7556497175141242,
+       "recall": 0.9320557491289199,
+       "f1": 0.8346333853354134,
+       "support": 574
+      },
+      "spike": {
+       "precision": 0.7849462365591398,
+       "recall": 0.9125,
+       "f1": 0.8439306358381503,
+       "support": 80
+      },
+      "sentinel": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 476
+      },
+      "dropout": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 430
+      },
+      "drift": {
+       "precision": 0.21782178217821782,
+       "recall": 0.27697841726618705,
+       "f1": 0.24386381631037213,
+       "support": 556
+      }
+     },
+     "macro_f1_faults": 0.7844855674967872,
+     "confusion": [
+      [
+       5599,
+       173,
+       20,
+       0,
+       0,
+       552
+      ],
+      [
+       38,
+       535,
+       0,
+       0,
+       0,
+       1
+      ],
+      [
+       7,
+       0,
+       73,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       476,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0,
+       430,
+       0
+      ],
+      [
+       402,
+       0,
+       0,
+       0,
+       0,
+       154
+      ]
+     ],
+     "false_flag_rate_on_normal": 0.11743379571248423
+    }
+   },
+   "shifted (harder) test": {
+    "rows": 16920,
+    "class_counts": [
+     12039,
+     1246,
+     158,
+     1098,
+     1060,
+     1319
+    ],
+    "random_forest": {
+     "per_class": {
+      "normal": {
+       "precision": 0.943753751178942,
+       "recall": 0.9142785945676551,
+       "f1": 0.9287823812336512,
+       "support": 12039
+      },
+      "stuck": {
+       "precision": 0.77196261682243,
+       "recall": 0.9943820224719101,
+       "f1": 0.8691687127323746,
+       "support": 1246
+      },
+      "spike": {
+       "precision": 0.7107843137254902,
+       "recall": 0.9177215189873418,
+       "f1": 0.8011049723756906,
+       "support": 158
+      },
+      "sentinel": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 1098
+      },
+      "dropout": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 1060
+      },
+      "drift": {
+       "precision": 0.5248062015503876,
+       "recall": 0.513267626990144,
+       "f1": 0.5189727865082407,
+       "support": 1319
+      }
+     },
+     "macro_f1_faults": 0.8378492943232612,
+     "confusion": [
+      [
+       11007,
+       360,
+       59,
+       0,
+       0,
+       613
+      ],
+      [
+       7,
+       1239,
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       13,
+       0,
+       145,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       1098,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0,
+       1060,
+       0
+      ],
+      [
+       636,
+       6,
+       0,
+       0,
+       0,
+       677
+      ]
+     ],
+     "false_flag_rate_on_normal": 0.08572140543234488
+    },
+    "rules": {
+     "per_class": {
+      "normal": {
+       "precision": 0.9080930394633678,
+       "recall": 0.8658526455685688,
+       "f1": 0.8864699379198911,
+       "support": 12039
+      },
+      "stuck": {
+       "precision": 0.8195912614517266,
+       "recall": 0.9333868378812199,
+       "f1": 0.8727954971857411,
+       "support": 1246
+      },
+      "spike": {
+       "precision": 0.7553191489361702,
+       "recall": 0.8987341772151899,
+       "f1": 0.8208092485549133,
+       "support": 158
+      },
+      "sentinel": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 1098
+      },
+      "dropout": {
+       "precision": 1.0,
+       "recall": 1.0,
+       "f1": 1.0,
+       "support": 1060
+      },
+      "drift": {
+       "precision": 0.21121718377088305,
+       "recall": 0.26838514025777105,
+       "f1": 0.23639398998330552,
+       "support": 1319
+      }
+     },
+     "macro_f1_faults": 0.785999747144792,
+     "confusion": [
+      [
+       10424,
+       256,
+       46,
+       0,
+       0,
+       1313
+      ],
+      [
+       76,
+       1163,
+       0,
+       0,
+       0,
+       7
+      ],
+      [
+       14,
+       0,
+       142,
+       0,
+       0,
+       2
+      ],
+      [
+       0,
+       0,
+       0,
+       1098,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0,
+       1060,
+       0
+      ],
+      [
+       965,
+       0,
+       0,
+       0,
+       0,
+       354
+      ]
+     ],
+     "false_flag_rate_on_normal": 0.1341473544314312
+    }
+   }
+  },
+  "real_data": {
+   "hours": 1692,
+   "random_forest": {
+    "flags_per_station_day": 2.5531914893617023,
+    "by_class": {
+     "stuck": 63,
+     "spike": 9,
+     "sentinel": 0,
+     "dropout": 0,
+     "drift": 108
+    }
+   },
+   "rules": {
+    "flags_per_station_day": 2.524822695035461,
+    "by_class": {
+     "stuck": 42,
+     "spike": 7,
+     "sentinel": 0,
+     "dropout": 0,
+     "drift": 129
+    }
+   }
+  },
+  "rf_predict_ms_per_window_single_thread": 42.22794700001032
+ },
+ "events": {
+  "target_burden": 0.5,
+  "persist_hours": 2,
+  "refractory_hours": 6,
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "methods": [
+   {
+    "name": "robust-baseline rule",
+    "threshold": 1.6395522271664982,
+    "burden_calibration": 0.4995757000948435,
+    "burden_test": 0.4127569540151795,
+    "recall": 0.6016150740242261,
+    "recall_by_factor": {
+     "1.5": 0.336,
+     "2.0": 0.6181102362204725,
+     "3.0": 0.8619246861924686
+    },
+    "median_latency_h": 1.0,
+    "n_episodes": 743,
+    "n_real_alerts_test": 886,
+    "hits": 447
+   },
+   {
+    "name": "Isolation Forest",
+    "threshold": 0.46763498482388854,
+    "burden_calibration": 0.4995757000948435,
+    "burden_test": 0.3219131548809131,
+    "recall": 0.43203230148048455,
+    "recall_by_factor": {
+     "1.5": 0.152,
+     "2.0": 0.3661417322834646,
+     "3.0": 0.7949790794979079
+    },
+    "median_latency_h": 1.0,
+    "n_episodes": 743,
+    "n_real_alerts_test": 691,
+    "hits": 321
+   },
+   {
+    "name": "forecast surprise (Phase 3 model)",
+    "threshold": -0.2544262280282433,
+    "burden_calibration": 0.4995757000948435,
+    "burden_test": 0.5022031562396879,
+    "recall": 0.6608344549125168,
+    "recall_by_factor": {
+     "1.5": 0.576,
+     "2.0": 0.594488188976378,
+     "3.0": 0.8200836820083682
+    },
+    "median_latency_h": 1.0,
+    "n_episodes": 743,
+    "n_real_alerts_test": 1078,
+    "hits": 491
+   },
+   {
+    "name": "repo EventDetector, retuned to the same burden",
+    "threshold": 31.41357421875,
+    "burden_calibration": 0.49837767683322515,
+    "burden_test": 0.20032222373197198,
+    "recall": 0.2772543741588156,
+    "recall_by_factor": {
+     "1.5": 0.076,
+     "2.0": 0.20078740157480315,
+     "3.0": 0.5690376569037657
+    },
+    "median_latency_h": 1.0,
+    "n_episodes": 743,
+    "n_real_alerts_test": 430,
+    "hits": 206
+   },
+   {
+    "name": "repo EventDetector, as shipped",
+    "threshold": null,
+    "burden_calibration": 0.904507562521839,
+    "burden_test": 0.8963254847914282,
+    "recall": 0.5989232839838493,
+    "recall_by_factor": {
+     "1.5": 0.528,
+     "2.0": 0.610236220472441,
+     "3.0": 0.6610878661087866
+    },
+    "median_latency_h": 1.0,
+    "n_episodes": 743,
+    "n_real_alerts_test": 1924,
+    "hits": 445
+   }
+  ]
+ }
+}

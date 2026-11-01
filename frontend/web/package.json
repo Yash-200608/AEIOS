@@ -7,7 +7,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts",
+    "test": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts && vitest run src/lib src/sim",
+    "test:unit": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts",
+    "test:sim": "vitest run src/lib src/sim",
     "typecheck": "tsc -b",
     "lint": "eslint src/motion src/motion-lab src/design/motion.ts src/components/WeatherScene.tsx tests/e2e",
     "lint:all": "eslint .",
@@ -46,6 +48,7 @@
     "stylelint": "^17.16.0",
     "stylelint-config-standard": "^40.0.0",
     "typescript": "~5.7.2",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^2.1.9"
   }
 }

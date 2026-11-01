@@ -15,10 +15,13 @@ test('overview: no CSS streak animation and the 3D loop stays stopped', async ({
     .evaluateAll((els) => els.map((el) => getComputedStyle(el).animationName).filter((n) => n !== 'none'));
   expect(running, 'no .cc-col-flow element may run a CSS animation under reduced motion').toEqual([]);
 
-  await page.locator('#atmosphere').scrollIntoViewIfNeeded();
   const host = page.locator('#atmosphere [data-scene-active]');
   await expect(host).toHaveCount(1);
-  await expect(host).toBeInViewport({ ratio: 0.1 });
+  // Panels above the scene load late and shift the layout, so scroll again until the scene is really in view.
+  await expect(async () => {
+    await page.locator('#atmosphere').scrollIntoViewIfNeeded();
+    await expect(host).toBeInViewport({ ratio: 0.1, timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.waitForTimeout(500); // give an (incorrect) loop time to start
   await expect(host).toHaveAttribute('data-scene-active', 'false');
 });

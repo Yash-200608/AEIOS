@@ -1,0 +1,12 @@
+[Unit]
+Description=AEIOS hourly PM2.5 forecast
+
+[Timer]
+# CPCB hourly means appear on OpenAQ some minutes after the hour; :20 leaves a margin. Persistent catches up after downtime.
+OnCalendar=*:20:00
+RandomizedDelaySec=90
+Persistent=true
+Unit=aeios-forecast.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+# Runtime + training dependencies, pinned to versions that have aarch64 / cp313 wheels (checked for the Pi 5) and
+# install on x86-64 Python 3.12+. Use a venv: the Pi's system Python is externally managed.
+#   python3 -m venv ~/gateway/.venv && ~/gateway/.venv/bin/pip install -r ai/requirements-pi.txt
+numpy>=2.2
+pandas>=2.3
+scipy>=1.15
+scikit-learn==1.9.1
+lightgbm==4.7.0
+xgboost==3.4.1
+joblib>=1.5
+certifi>=2025.1

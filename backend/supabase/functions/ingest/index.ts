@@ -15,8 +15,12 @@ const COLS: Record<string, string[]> = {
     "model", "model_updates"],
   anomalies: ["packet_id", "source", "node", "utc", "signal", "value", "median_24h", "z"],
   smoke_alerts: ["utc", "site", "level", "hours_ahead", "fires", "frp_mw", "origin_km", "origin_dir", "height", "local_pm25", "stale_h", "message"],
+  forecasts: ["station", "location_id", "horizon_h", "made_utc", "origin_utc", "due_utc", "source", "model_version", "input_source",
+    "weather_source", "stale_h", "pm_now", "q10", "q50", "q90", "interval", "drivers", "reason"],
 };
-const TS = new Set(["rx_utc", "made_utc", "due_utc", "utc"]);
+const TS = new Set(["rx_utc", "made_utc", "due_utc", "utc", "origin_utc"]);
+const NULLABLE_TS = new Set(["origin_utc", "due_utc"]);   // a no_input forecast has no origin or due time
+const SOURCES = new Set(["lightgbm_cqr", "fallback_persistence", "no_input"]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -60,13 +64,23 @@ Deno.serve(async (req) => {
 
   const out: Record<string, unknown>[] = [];
   for (const r of rows) {
-    const key = table === "smoke_alerts" ? "site" : "node";
+    const key = table === "smoke_alerts" ? "site" : table === "forecasts" ? "station" : "node";
     if (!Number.isInteger(r?.id) || typeof r?.[key] !== "string") return json({ error: `each row needs integer id and ${key}` }, 422);
     const o: Record<string, unknown> = { device_id: device, pi_id: r.id };
     for (const c of cols) {
       let v = r[c] ?? null;
       if (c === "packet_id") { o["packet_pi_id"] = v; continue; }
-      if (TS.has(c)) { v = toUtc(v); if (v === null) return json({ error: `bad timestamp in ${c}` }, 422); }
+      if (TS.has(c)) {
+        if (v === null && table === "forecasts" && NULLABLE_TS.has(c)) { o[c] = null; continue; }
+        v = toUtc(v);
+        if (v === null) return json({ error: `bad timestamp in ${c}` }, 422);
+      }
+      if (c === "drivers") {
+        // JSON column: accept only an array of small objects (TreeSHAP drivers), never arbitrary payloads
+        if (v !== null && (!Array.isArray(v) || v.length > 12 || JSON.stringify(v).length > 4000)) return json({ error: "bad drivers" }, 422);
+        o[c] = v; continue;
+      }
+      if (c === "source" && table === "forecasts" && !SOURCES.has(String(v))) return json({ error: "bad forecast source" }, 422);
       if (typeof v === "string") v = v.slice(0, 300);
       o[c] = v;
     }

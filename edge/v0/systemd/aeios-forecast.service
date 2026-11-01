@@ -1,0 +1,15 @@
+[Unit]
+Description=AEIOS PM2.5 forecast run (CPCB inputs -> forecasts.db -> Supabase)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/aeios_ai
+EnvironmentFile=-%h/.config/aeios/uploader.env
+EnvironmentFile=%h/.config/aeios/forecast.env
+ExecStart=%h/aeios_ai/.venv/bin/python -m ai.service.forecast_service --stations %h/aeios_ai/stations.json --db %h/aeios_ai/forecasts.db
+TimeoutStartSec=300
+# Keep the forecast run from competing with the radio receiver: low priority and a hard memory cap.
+Nice=10
+MemoryMax=400M

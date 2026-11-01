@@ -1,0 +1,488 @@
+{
+ "model": "pm25_lgbm_cqr",
+ "version": "v20261031",
+ "feature_kind": "base",
+ "created": "2026-10-31 16:46 UTC",
+ "target": "log1p(PM2.5 ug/m3), quantiles 0.1/0.5/0.9, 80% CQR",
+ "horizons": [
+  1,
+  3,
+  6,
+  12,
+  24
+ ],
+ "feature_names": [
+  "boundary_layer_height",
+  "cloud_cover",
+  "dew_point_2m",
+  "diwali_window",
+  "dow_cos",
+  "dow_sin",
+  "hour_cos",
+  "hour_sin",
+  "month_cos",
+  "month_sin",
+  "pm_delta1",
+  "pm_delta3",
+  "pm_lag1",
+  "pm_lag12",
+  "pm_lag2",
+  "pm_lag24",
+  "pm_lag3",
+  "pm_lag6",
+  "pm_max24",
+  "pm_mean24",
+  "pm_mean3",
+  "pm_mean6",
+  "pm_now",
+  "pm_std6",
+  "precipitation",
+  "relative_humidity_2m",
+  "stubble_season",
+  "surface_pressure",
+  "temperature_2m",
+  "ventilation",
+  "wind_dir_cos",
+  "wind_dir_sin",
+  "wind_speed_100m",
+  "wind_speed_10m",
+  "winter_fog_season",
+  "station_code"
+ ],
+ "stations": [
+  {
+   "location_id": 10488,
+   "name": "Najafgarh, Delhi - DPCC"
+  },
+  {
+   "location_id": 301,
+   "name": "Vikas Sadan, Gurugram - HSPCB"
+  },
+  {
+   "location_id": 6953,
+   "name": "Sector-2 IMT, Manesar - HSPCB"
+  },
+  {
+   "location_id": 10825,
+   "name": "Sector-51, Gurugram - HSPCB"
+  },
+  {
+   "location_id": 5622,
+   "name": "NSIT Dwarka, Delhi - CPCB"
+  },
+  {
+   "location_id": 6931,
+   "name": "Dwarka-Sector 8, Delhi - DPCC"
+  },
+  {
+   "location_id": 6936,
+   "name": "Arya Nagar, Bahadurgarh - HSPCB"
+  },
+  {
+   "location_id": 5570,
+   "name": "Aya Nagar, New Delhi - IMD"
+  },
+  {
+   "location_id": 5650,
+   "name": "IGI Airport (T3), Delhi - IMD"
+  },
+  {
+   "location_id": 10921,
+   "name": "NISE Gwal Pahari, Gurugram - IMD"
+  }
+ ],
+ "windows": {
+  "train targets until": "2025-10-01",
+  "calibration origins": "2025-10-01..2026-01-16",
+  "test origins from": "2026-01-16"
+ },
+ "trained_on": "CPCB PM2.5 (OpenAQ) + ERA5; NOT AEIOS node data",
+ "files": {
+  "h1/conformal.json": "b0e1f891f944bd3a7a5ac7e42673bfaebb592c996c916be26790c0d8b2ac4c00",
+  "h1/q10.txt": "2b89633f653ae4e87403a58ccde160a6914d95313ccb756156a9bec4431b9699",
+  "h1/q50.txt": "f765ab63bdff1a9307d63772efb3051daade36985008345a58264e3e96bcc646",
+  "h1/q90.txt": "aff8f12aba8debb9ef471fddd78c226eaefe2a0a964189e879a41e5d5e2cc209",
+  "h3/conformal.json": "fc857133e89ac8270dbee83a5001dcb1ad3a537f72d375fab1524504d6cbb7be",
+  "h3/q10.txt": "4117a5895d13dd566140596b409aa0fcefa5115b48bab608a636c928f29b8d3a",
+  "h3/q50.txt": "0b4ea42800fea2437f41c249a1739152b9a2f905c3eaa1b87122e131c26243a4",
+  "h3/q90.txt": "fe05575c354b3b1c3b31416b3ea5b3b8ae36be633f31b231e4703701df18a90e",
+  "h6/conformal.json": "faa973c268ce01dd8268fb653a7183d342c9a43a26cf25d350dcf1adb60002eb",
+  "h6/q10.txt": "640c7fdacd03d03dbee7b07105ce9688e748965ae7e6e05c5644b1c64ffc8294",
+  "h6/q50.txt": "67cc8d41a8426309c665890abe38747b5311ed45ade308cd932f0148e3654d24",
+  "h6/q90.txt": "7914f3787bf5dc4d7d841341a15006db71d87253a3f3482bc0dfb38ab0b9d002",
+  "h12/conformal.json": "0c455cf148a40cdce34985e6cb05bdda753da3671105eb63e50e2edfd487a57d",
+  "h12/q10.txt": "901b7c73ae62271f7ea284a1f1c4670f2342c679a50f1a47d2241b6cff8c3c0b",
+  "h12/q50.txt": "224d5e056217ba6340c60ab5562387ea9f2991f92e11ac36efaad77770be1307",
+  "h12/q90.txt": "86cae2f78c9afd4c167cdcc3e809ab9415ec33bb25e52d66ad36dc09eb99db28",
+  "h24/conformal.json": "d3183cb3b7026ddd7e5994ce87cec47eb46831f953a5edb8f4e12d385495ce55",
+  "h24/q10.txt": "8a63463e32d12a02f891aff59169f0a11a1f7c0cee8e92e35c4b88769c6f5a8a",
+  "h24/q50.txt": "d010e2f5ae21838499ded20a2fbde708793ec81a1e0cdecf8b88d09a8fc0660f",
+  "h24/q90.txt": "85c7a7476790419c2c4748f44ca8798d8045cd22874f430c52640c9107357012"
+ },
+ "seed": 20261031,
+ "lightgbm_params": {
+  "learning_rate": 0.05,
+  "num_leaves": 31,
+  "min_data_in_leaf": 200,
+  "feature_fraction": 0.8,
+  "bagging_fraction": 0.8,
+  "bagging_freq": 1,
+  "lambda_l2": 5.0,
+  "verbose": -1,
+  "seed": 20261031,
+  "deterministic": true,
+  "force_row_wise": true
+ },
+ "metrics_all_test": {
+  "1": {
+   "n": 46484,
+   "point": {
+    "persistence": {
+     "n": 46484,
+     "mae": 12.58323304361077,
+     "rmse": 30.459501997465562,
+     "bias": -0.19676568958195143,
+     "skill_vs_persistence": 0.0
+    },
+    "climatology": {
+     "n": 46484,
+     "mae": 32.916296749380315,
+     "rmse": 52.32215941392682,
+     "bias": -1.363964972968056,
+     "skill_vs_persistence": -1.6158854910577856
+    },
+    "cams": {
+     "n": 46484,
+     "mae": 47.37872565091046,
+     "rmse": 70.64242775315863,
+     "bias": 17.82171242040654,
+     "skill_vs_persistence": -2.765226749493236
+    },
+    "ridge": {
+     "n": 46484,
+     "mae": 25.17775828749416,
+     "rmse": 337.9386008891194,
+     "bias": -6.026400142360773,
+     "skill_vs_persistence": -1.0008974005514708
+    },
+    "xgboost": {
+     "n": 46484,
+     "mae": 11.658177571500296,
+     "rmse": 27.51806198280935,
+     "bias": -3.1647274270502357,
+     "skill_vs_persistence": 0.07351492807169913
+    },
+    "lightgbm_q50": {
+     "n": 46484,
+     "mae": 11.31648448900208,
+     "rmse": 27.111476402572602,
+     "bias": -1.6608390197805627,
+     "skill_vs_persistence": 0.1006695616475044
+    }
+   },
+   "interval": {
+    "lightgbm_raw": {
+     "coverage80": 0.7433310386369504,
+     "width": 28.928474327420265,
+     "pinball10": 2.4834935164418006,
+     "pinball50": 5.65824224450104,
+     "pinball90": 3.6774211572863726
+    },
+    "lightgbm_cqr": {
+     "coverage80": 0.7970699595559763,
+     "width": 32.52970251547346,
+     "pinball10": 2.479782586129528,
+     "pinball50": 5.65824224450104,
+     "pinball90": 3.6131227709462856
+    },
+    "persistence_band": {
+     "coverage80": 0.7255399707426211,
+     "width": 31.503856658935547,
+     "pinball10": 3.2911518094817587,
+     "pinball50": 6.291616521805385,
+     "pinball90": 4.3097362487814825
+    }
+   }
+  },
+  "3": {
+   "n": 43520,
+   "point": {
+    "persistence": {
+     "n": 43520,
+     "mae": 23.438030907361398,
+     "rmse": 48.423625050770816,
+     "bias": -0.5035161705657897,
+     "skill_vs_persistence": 0.0
+    },
+    "climatology": {
+     "n": 43520,
+     "mae": 33.04879446791311,
+     "rmse": 53.03475856024488,
+     "bias": -1.111014508596878,
+     "skill_vs_persistence": -0.41004995677914113
+    },
+    "cams": {
+     "n": 43520,
+     "mae": 47.29429532077099,
+     "rmse": 71.02680748923522,
+     "bias": 17.722309956986038,
+     "skill_vs_persistence": -1.0178442253831501
+    },
+    "ridge": {
+     "n": 43520,
+     "mae": 25.649389826321663,
+     "rmse": 62.17860967649791,
+     "bias": -12.660949067079608,
+     "skill_vs_persistence": -0.09434917667361398
+    },
+    "xgboost": {
+     "n": 43520,
+     "mae": 18.958815460868006,
+     "rmse": 38.99349783997851,
+     "bias": -6.546458632385806,
+     "skill_vs_persistence": 0.19110886337668254
+    },
+    "lightgbm_q50": {
+     "n": 43520,
+     "mae": 18.7284142972779,
+     "rmse": 38.61738057583238,
+     "bias": -4.938851948857143,
+     "skill_vs_persistence": 0.20093909034842616
+    }
+   },
+   "interval": {
+    "lightgbm_raw": {
+     "coverage80": 0.7377757352941177,
+     "width": 46.65883901636175,
+     "pinball10": 3.636434720161211,
+     "pinball50": 9.36420714863895,
+     "pinball90": 6.5571906159566025
+    },
+    "lightgbm_cqr": {
+     "coverage80": 0.8098345588235294,
+     "width": 55.918184980043506,
+     "pinball10": 3.6366406361915953,
+     "pinball50": 9.36420714863895,
+     "pinball90": 6.366096298758414
+    },
+    "persistence_band": {
+     "coverage80": 0.7547564338235294,
+     "width": 68.9936294555664,
+     "pinball10": 4.996449452045913,
+     "pinball50": 11.719015453680699,
+     "pinball90": 8.50616377667238
+    }
+   }
+  },
+  "6": {
+   "n": 42632,
+   "point": {
+    "persistence": {
+     "n": 42632,
+     "mae": 30.118460851956044,
+     "rmse": 54.89149250695373,
+     "bias": 1.0896275744115982,
+     "skill_vs_persistence": 0.0
+    },
+    "climatology": {
+     "n": 42632,
+     "mae": 32.65378274603701,
+     "rmse": 51.74204235118973,
+     "bias": -1.0864846721942607,
+     "skill_vs_persistence": -0.08417833522579588
+    },
+    "cams": {
+     "n": 42632,
+     "mae": 46.945031714195046,
+     "rmse": 70.08551206512254,
+     "bias": 17.675427594256394,
+     "skill_vs_persistence": -0.5586796398709797
+    },
+    "ridge": {
+     "n": 42632,
+     "mae": 28.271778420192145,
+     "rmse": 240.70980180130147,
+     "bias": -13.430657102044805,
+     "skill_vs_persistence": 0.06131397088453694
+    },
+    "xgboost": {
+     "n": 42632,
+     "mae": 22.280368293459745,
+     "rmse": 41.47130491407727,
+     "bias": -9.11620848981212,
+     "skill_vs_persistence": 0.2602421351151898
+    },
+    "lightgbm_q50": {
+     "n": 42632,
+     "mae": 22.00020274733303,
+     "rmse": 40.831032482504455,
+     "bias": -7.31099816224311,
+     "skill_vs_persistence": 0.2695442554162184
+    }
+   },
+   "interval": {
+    "lightgbm_raw": {
+     "coverage80": 0.7262385062863577,
+     "width": 53.348856482539695,
+     "pinball10": 4.099769558503754,
+     "pinball50": 11.000101373666515,
+     "pinball90": 7.521255354936241
+    },
+    "lightgbm_cqr": {
+     "coverage80": 0.8165697128917245,
+     "width": 67.35949896692877,
+     "pinball10": 4.106309727711901,
+     "pinball50": 11.000101373666515,
+     "pinball90": 7.196596876666103
+    },
+    "persistence_band": {
+     "coverage80": 0.7569900544192156,
+     "width": 95.80127716064453,
+     "pinball10": 5.644760149836409,
+     "pinball50": 15.059230425978022,
+     "pinball90": 10.837451342285343
+    }
+   }
+  },
+  "12": {
+   "n": 41608,
+   "point": {
+    "persistence": {
+     "n": 41608,
+     "mae": 35.55540319468134,
+     "rmse": 59.7549120713281,
+     "bias": -0.07540410608035972,
+     "skill_vs_persistence": 0.0
+    },
+    "climatology": {
+     "n": 41608,
+     "mae": 32.94522726958923,
+     "rmse": 52.58697671448048,
+     "bias": -1.143561902180828,
+     "skill_vs_persistence": 0.07341151247252786
+    },
+    "cams": {
+     "n": 41608,
+     "mae": 47.69486417347289,
+     "rmse": 71.22811650857778,
+     "bias": 18.691741623541237,
+     "skill_vs_persistence": -0.3414238030805812
+    },
+    "ridge": {
+     "n": 41608,
+     "mae": 27.155179272718563,
+     "rmse": 67.46883445574375,
+     "bias": -13.901252650302217,
+     "skill_vs_persistence": 0.23625731020311846
+    },
+    "xgboost": {
+     "n": 41608,
+     "mae": 24.433705551091315,
+     "rmse": 44.1610635309695,
+     "bias": -10.52616317970787,
+     "skill_vs_persistence": 0.3127990866168464
+    },
+    "lightgbm_q50": {
+     "n": 41608,
+     "mae": 24.29487638697318,
+     "rmse": 43.97407283344017,
+     "bias": -8.246024970560242,
+     "skill_vs_persistence": 0.3167036735894082
+    }
+   },
+   "interval": {
+    "lightgbm_raw": {
+     "coverage80": 0.7091184387617766,
+     "width": 55.887838676918385,
+     "pinball10": 4.439924018329133,
+     "pinball50": 12.14743819348659,
+     "pinball90": 8.431245042572959
+    },
+    "lightgbm_cqr": {
+     "coverage80": 0.8163093635839261,
+     "width": 74.12794268152908,
+     "pinball10": 4.437831386435019,
+     "pinball50": 12.14743819348659,
+     "pinball90": 7.883810726015395
+    },
+    "persistence_band": {
+     "coverage80": 0.7444241492020766,
+     "width": 115.63009643554688,
+     "pinball10": 5.952417864739833,
+     "pinball50": 17.77770159734067,
+     "pinball90": 12.80556049370499
+    }
+   }
+  },
+  "24": {
+   "n": 42955,
+   "point": {
+    "persistence": {
+     "n": 42955,
+     "mae": 27.855431919158857,
+     "rmse": 51.440343161820444,
+     "bias": 0.040349332007050806,
+     "skill_vs_persistence": 0.0
+    },
+    "climatology": {
+     "n": 42955,
+     "mae": 32.950305357582536,
+     "rmse": 52.56786409333027,
+     "bias": -1.5346229744908269,
+     "skill_vs_persistence": -0.18290412631941444
+    },
+    "cams": {
+     "n": 42955,
+     "mae": 47.25885316031771,
+     "rmse": 70.35506578756724,
+     "bias": 18.13224245859167,
+     "skill_vs_persistence": -0.6965758526908088
+    },
+    "ridge": {
+     "n": 42955,
+     "mae": 27.43057140997339,
+     "rmse": 63.01210413719541,
+     "bias": -15.069947158223407,
+     "skill_vs_persistence": 0.015252339666406378
+    },
+    "xgboost": {
+     "n": 42955,
+     "mae": 25.21262310178421,
+     "rmse": 45.58390187542934,
+     "bias": -11.666106698796543,
+     "skill_vs_persistence": 0.09487588722531826
+    },
+    "lightgbm_q50": {
+     "n": 42955,
+     "mae": 25.219618692788902,
+     "rmse": 45.55082504277132,
+     "bias": -9.011655724371145,
+     "skill_vs_persistence": 0.09462474802112308
+    }
+   },
+   "interval": {
+    "lightgbm_raw": {
+     "coverage80": 0.7425445233383774,
+     "width": 61.04363983631195,
+     "pinball10": 4.552670589227648,
+     "pinball50": 12.609809346394451,
+     "pinball90": 8.479338512572854
+    },
+    "lightgbm_cqr": {
+     "coverage80": 0.8114771272261669,
+     "width": 73.73687971723598,
+     "pinball10": 4.580823261686156,
+     "pinball50": 12.609809346394451,
+     "pinball90": 8.114009175771292
+    },
+    "persistence_band": {
+     "coverage80": 0.7673379117681295,
+     "width": 95.47115325927734,
+     "pinball10": 5.4750274236047805,
+     "pinball50": 13.927715959579428,
+     "pinball90": 10.194495130438348
+    }
+   }
+  }
+ }
+}

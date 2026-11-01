@@ -30,8 +30,10 @@ jobs:
 
       - name: Simulation laboratory host tests
         run: python3 -m unittest discover -s simulation/tests -v
-      - name: AI data foundation tests
-        run: python3 -m unittest discover -s ai/tests -t . -v
+      - name: AI data foundation and forecast tests
+        run: |
+          python3 -m pip install -r ai/requirements-pi.txt
+          python3 -m unittest discover -s ai/tests -t . -v
 
   static-analysis:
     runs-on: ubuntu-latest
@@ -75,3 +77,21 @@ jobs:
             'firmware/host_mocks/**/*.h')
           if [ ${#FILES[@]} -eq 0 ]; then echo "No files"; exit 0; fi
           clang-format --dry-run --Werror "${FILES[@]}"
+
+  web-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/web/package-lock.json
+      - run: npm ci
+      - name: Type-check and build
+        run: npm run build
+      - name: Dispersion solver and isosurface tests
+        run: npm test

@@ -537,3 +537,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .scene-gesture { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+
+/* PM2.5 forecast panel */
+.fc-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.fc-select { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 10px var(--mono); letter-spacing: .06em; }
+.fc-select select { background: rgba(22, 14, 32, .8); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font: 12px var(--mono); max-width: 100%; }
+.fc-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.fc-pills button { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font: 10px var(--mono); cursor: pointer; }
+.fc-pills button.active { color: #00e5ff; border-color: #00e5ff; }
+.fc-drivers { display: grid; gap: 7px; margin-top: 10px; }
+.fc-driver { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 52px; align-items: center; gap: 10px; font-size: 12px; color: var(--text-soft); }
+.fc-driver small { color: var(--muted); margin-left: 6px; font: 10px var(--mono); }
+.fc-bar { height: 8px; border-radius: 4px; background: rgba(175, 161, 192, .1); overflow: hidden; }
+.fc-bar i { display: block; height: 100%; border-radius: 4px; }
+.fc-bar i.up { background: #00e5ff; } .fc-bar i.down { background: #a784d9; }
+.fc-driver-val { text-align: right; font: 11px var(--mono); }
+@media (max-width: 560px) { .fc-driver { grid-template-columns: 1fr 70px 46px; } }
+
+/* 3D dispersion twin */
+.tw-layout { display: grid; grid-template-columns: 310px 1fr; gap: 12px; align-items: start; }
+.tw-controls { display: grid; gap: 12px; }
+.tw-field { display: grid; gap: 6px; font-size: 12px; color: var(--text-soft); }
+.tw-field b { color: var(--text); font-weight: 600; margin-left: 4px; }
+.tw-field small { color: var(--muted); font: 10px var(--mono); }
+.tw-field input[type=range] { width: 100%; accent-color: #00e5ff; }
+.tw-run { background: #00e5ff; color: #050505; border: 0; border-radius: 8px; padding: 11px 14px; font: 600 13px var(--mono); letter-spacing: .04em; cursor: pointer; }
+.tw-run:disabled { opacity: .6; cursor: progress; }
+.tw-stage { position: relative; min-height: 560px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: radial-gradient(120% 90% at 50% 0%, #1b1030 0%, #08050d 70%); }
+.tw-canvas { position: absolute; inset: 0; }
+.tw-canvas canvas { width: 100% !important; height: 100% !important; display: block; touch-action: none; }
+.tw-overlay { position: absolute; pointer-events: none; }
+.tw-banner { top: 10px; left: 12px; font: 600 10px var(--mono); letter-spacing: .12em; color: #ff9a64; background: rgba(40, 14, 4, .7); border: 1px solid rgba(255, 154, 100, .35); border-radius: 4px; padding: 6px 9px; }
+.tw-legend { right: 12px; bottom: 12px; width: min(300px, 70%); background: rgba(10, 6, 16, .72); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.tw-bar { height: 9px; border-radius: 3px; background: linear-gradient(90deg, #3b0a6b 0%, #6a3fd0 45%, #00b8d9 72%, #f5ff7a 100%); }
+.tw-bar-labels { display: flex; justify-content: space-between; font: 9px var(--mono); color: var(--muted); margin-top: 4px; }
+.tw-hint { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.tw-empty { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; max-width: 340px; color: var(--text-soft); font-size: 13px; pointer-events: none; }
+.tw-transport { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.tw-transport input[type=range] { flex: 1; accent-color: #00e5ff; }
+.tw-play { background: transparent; color: #00e5ff; border: 1px solid #00e5ff; border-radius: 6px; padding: 6px 9px; cursor: pointer; display: inline-flex; }
+.tw-play:disabled { opacity: .5; }
+.tw-time { font: 11px var(--mono); color: var(--text-soft); white-space: nowrap; }
+@media (max-width: 900px) { .tw-layout { grid-template-columns: 1fr; } .tw-stage { min-height: 440px; } .tw-time { white-space: normal; } }

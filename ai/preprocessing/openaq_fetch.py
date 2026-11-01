@@ -73,17 +73,27 @@ def parse_locations(payload: dict, lat: float, lon: float) -> tuple[list[dict], 
     return stations, sensors
 
 
+def _iso(s: str) -> datetime:
+    return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
 def parse_hours(payload: dict) -> list[tuple[int, float, Optional[float]]]:
-    """Return (unix_ts_of_period_start, value, coverage_pct) per hourly row. Rows without a value or time are dropped."""
+    """Return (stamp, value, coverage_pct) per hourly row, dropping rows without a value or time.
+
+    The stamp is the END of the averaging period rounded UP to a whole UTC hour. CPCB hours are local (IST, UTC+5:30), so
+    many periods run xx:30..xx+1:30; stamping at the end means a value is never attributed to a time before it was known
+    (a feature at origin t may only use stamps <= t). Aligned periods are unchanged: 07:00-08:00 is stamped 08:00."""
     out: list[tuple[int, float, Optional[float]]] = []
     for r in payload.get("results", []):
-        start = _utc((r.get("period") or {}).get("datetimeFrom"))
+        period = r.get("period") or {}
+        start, end = _utc(period.get("datetimeFrom")), _utc(period.get("datetimeTo"))
         v = r.get("value")
-        if start is None or v is None:
+        if (start is None and end is None) or v is None:
             continue
-        ts = int(datetime.fromisoformat(start.replace("Z", "+00:00")).timestamp())
+        end_ts = int(_iso(end).timestamp()) if end else int(_iso(start).timestamp()) + 3600
+        stamp = -(-end_ts // 3600) * 3600
         cov = (r.get("coverage") or {}).get("percentComplete")
-        out.append((ts, float(v), float(cov) if cov is not None else None))
+        out.append((stamp, float(v), float(cov) if cov is not None else None))
     return out
 
 
@@ -132,32 +142,38 @@ def _month_windows(start: datetime, end: datetime) -> Iterable[tuple[datetime, d
 
 
 def _hours_page(client: JsonClient, sensor_id: int, a: datetime, b: datetime, page: int) -> dict:
+    # NOTE: only `datetime_from`/`datetime_to` filter. The `date_from`/`date_to` spelling in the docs is silently ignored
+    # by the live API (it returns the oldest rows whatever the window), so it is deliberately not used as a fallback.
     fmt = "%Y-%m-%dT%H:%M:%SZ"
-    for names in (("datetime_from", "datetime_to"), ("date_from", "date_to")):  # v3 spelling, then the documented alias
-        try:
-            return client.get(f"/sensors/{sensor_id}/hours",
-                              {names[0]: a.strftime(fmt), names[1]: b.strftime(fmt), "limit": PAGE, "page": page})
-        except HttpError as e:
-            if "HTTP 422" not in str(e):
-                raise
-    raise HttpError(f"sensor {sensor_id}: both date parameter spellings were rejected")
+    return client.get(f"/sensors/{sensor_id}/hours",
+                      {"datetime_from": a.strftime(fmt), "datetime_to": b.strftime(fmt), "limit": PAGE, "page": page})
 
 
 def fetch_history(client: JsonClient, conn: sqlite3.Connection, *, since: str = DEFAULT_SINCE,
-                  until: Optional[datetime] = None, now: Optional[float] = None) -> dict:
+                  until: Optional[datetime] = None, now: Optional[float] = None,
+                  parameters: Optional[tuple[str, ...]] = None, sensor_ids: Optional[Iterable[int]] = None,
+                  backfill: bool = False) -> dict:
     """Download hourly history for every cached PM sensor. Resumable: a sensor is re-read from its last fetched hour
-    minus OVERLAP_H, so repeated runs only fetch what is new."""
+    minus OVERLAP_H, so repeated runs only fetch what is new. `backfill=True` instead reads from `since` up to the earliest
+    hour already cached (plus the overlap), to extend history backwards without re-downloading what is there."""
     end = until or datetime.fromtimestamp(now if now is not None else time.time(), timezone.utc).replace(
         minute=0, second=0, microsecond=0)
     floor = datetime.fromisoformat(since).replace(tzinfo=timezone.utc)
     stats = {"sensors": 0, "rows": 0, "requests": 0}
-    for (sid,) in conn.execute("SELECT sensor_id FROM aq_sensors ORDER BY sensor_id").fetchall():
+    wanted = set(sensor_ids) if sensor_ids is not None else None
+    for (sid, param) in conn.execute("SELECT sensor_id, parameter FROM aq_sensors ORDER BY sensor_id").fetchall():
+        if (parameters and param not in parameters) or (wanted is not None and sid not in wanted):
+            continue
         row = conn.execute("SELECT fetched_through FROM aq_fetch_state WHERE sensor_id=?", (sid,)).fetchone()
-        start = floor
-        if row:
+        start, stop = floor, end
+        if backfill:
+            first = conn.execute("SELECT min(ts) FROM aq_hourly WHERE sensor_id=?", (sid,)).fetchone()[0]
+            if first is not None:
+                stop = min(end, datetime.fromtimestamp(first, timezone.utc) + timedelta(hours=OVERLAP_H))
+        elif row:
             start = max(floor, datetime.fromtimestamp(row[0], timezone.utc) - timedelta(hours=OVERLAP_H))
         total = 0
-        for a, b in _month_windows(start, end):
+        for a, b in _month_windows(start, stop):
             page = 1
             while True:
                 payload = _hours_page(client, sid, a, b, page)
@@ -170,8 +186,9 @@ def fetch_history(client: JsonClient, conn: sqlite3.Connection, *, since: str = 
                 if len(payload.get("results", [])) < PAGE:
                     break
                 page += 1
-        with conn:
-            conn.execute("INSERT OR REPLACE INTO aq_fetch_state VALUES (?,?,?)", (sid, int(end.timestamp()), int(time.time())))
+        if not backfill:
+            with conn:
+                conn.execute("INSERT OR REPLACE INTO aq_fetch_state VALUES (?,?,?)", (sid, int(end.timestamp()), int(time.time())))
         stats["sensors"] += 1
         stats["rows"] += total
     return stats
@@ -196,6 +213,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     d.add_argument("--radius-km", type=float, default=25.0)
     h = sub.add_parser("history")
     h.add_argument("--since", default=DEFAULT_SINCE)
+    h.add_argument("--parameters", default="pm25,pm10", help="comma list, e.g. pm25")
+    h.add_argument("--backfill", action="store_true", help="extend history back to --since without touching newer data")
+    h.add_argument("--sensor", type=int, action="append", help="only this sensor id (repeatable)")
     sub.add_parser("status")
     a = ap.parse_args(argv)
     load_env()
@@ -208,7 +228,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(discover(client, conn, radius_m=int(a.radius_km * 1000),
                        provider_contains=None if a.provider == "any" else a.provider))
     else:
-        print(fetch_history(client, conn, since=a.since))
+        print(fetch_history(client, conn, since=a.since, parameters=tuple(a.parameters.split(',')), sensor_ids=a.sensor, backfill=a.backfill))
     return 0
 
 

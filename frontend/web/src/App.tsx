@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import {
   Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays,
   Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Compass,
-  Droplets, Flame, Gauge, Globe2, Layers3, MapPin, Menu, Play, RadioTower, RefreshCw, Satellite,
+  Box, Droplets, Flame, Gauge, Globe2, Layers3, MapPin, Menu, Play, RadioTower, RefreshCw, Satellite,
   ShieldCheck, Sun, Thermometer, Wind, X, Zap,
 } from 'lucide-react';
 import {
@@ -13,8 +13,10 @@ import WeatherScene, { layerNorms, type SceneWeather } from './components/Weathe
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
 import Overview from './components/overview/Overview';
+import ForecastPanel from './components/ForecastPanel';
 import { ventilation, VENTILATION_POOR } from './lib/derived';
 import DispersionPanel from './components/DispersionPanel';
+import DispersionTwin from './components/DispersionTwin';
 import SatellitePanel from './components/SatellitePanel';
 import SmokeTracerPanel from './components/SmokeTracerPanel';
 import { SmokeAlertHistory, SmokeBanner } from './components/SmokeAlerts';
@@ -349,6 +351,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <button className={nav === 'overview' ? 'active' : ''} aria-current={nav === 'overview' ? 'page' : undefined} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
           <button className={nav === 'air-quality' ? 'active' : ''} aria-current={nav === 'air-quality' ? 'page' : undefined} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
           <button className={nav === 'dispersion' ? 'active' : ''} aria-current={nav === 'dispersion' ? 'page' : undefined} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Pollution dispersion</button>
+          <button className={nav === 'twin' ? 'active' : ''} aria-current={nav === 'twin' ? 'page' : undefined} onClick={() => navigate('twin')}><Box size={17} /> 3D dispersion twin</button>
         </nav>
         <div className="side-group-label">EXPLORE</div>
         <nav className="side-nav" aria-label="Explore">
@@ -405,6 +408,8 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
         <p className="specialist-divider"><span>Specialist analysis</span> Each section below goes deeper into one question.</p>
         <DispersionPanel hourly={hourly} index={selectedHour} />
+
+        <DispersionTwin />
 
         <section id="atmosphere" className="page-section">
           <SectionTitle kicker="ATMOSPHERIC FIELD VISUALIZATION" title="3D weather environment" right={<div className="model-status"><span className="status-led" /> REGIONAL MODEL FIELD</div>} />
@@ -561,6 +566,8 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
         </section>
 
         <AeiosPanel />
+
+        <ForecastPanel />
 
         <section id="station" className="page-section">
           <SectionTitle kicker="GROUND-TRUTH NETWORK" title="Station observations & site map" right={<span className={`status-chip ${station?.status === 'LIVE' ? 'status-live' : ''}`}><span className="status-led" /> {station?.status || 'CHECKING STATION'}</span>} />
