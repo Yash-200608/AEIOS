@@ -88,7 +88,7 @@ Normal, stale node, gateway online while node stale, missing PM reading, no pack
 ## 6. Known issues and what was not verified
 
 - **Real-data happy path was not seen.** The local preview reads Supabase with no signed-in user, so it returns no gateway rows. Gateway, node, alert and model states were verified through fixtures. The live path uses the same `useAeios()` and `useAlerts()` hooks and the same pure model, but it has not been observed with real packets in this session.
-- **Visual discontinuity.** Everything below the Overview still uses the legacy purple, glow and serif style, and the legacy Dispersion section repeats a ventilation chart that the Overview outlook now also shows.
+- **Visual discontinuity.** Everything below the Overview still uses the legacy purple, glow and serif style. (The duplicate ventilation chart was resolved afterwards, see section 9.)
 - **Freshness thresholds are unvalidated assumptions** (`NODE_STALE_MS` 30 min and `MODEL_MATURE_PACKETS` 10,000, from the earlier audit session). Unchanged; the data map records their provenance.
 - **Unit tests cover the pure model only.** Components cannot be rendered under `node --test` (TSX and CSS); their states were verified in the browser, not in automated tests.
 - **Contrast** relies on the measured Phase 1 token pairs (every pair used here is at least 5.34:1; the control border 3.26:1). Hover, disabled and tooltip states were not individually measured.
@@ -113,3 +113,13 @@ npm run build
 3. Answer Phase 1's open questions (fonts first), then migrate the remaining sections off the legacy purple system.
 4. Add component-level tests (a runner such as Vitest plus Testing Library is the natural, but new, dependency) and an automated accessibility check.
 5. Capture and commit native screenshots with a scripted browser, if the owner wants them in the repository.
+
+## 9. Addendum: duplicate ventilation chart resolved
+
+The 48 h ventilation series was drawn twice: on the Overview and in the Pollution dispersion section. Now there is one canonical chart.
+
+- `components/VentilationChart.tsx` (moved from `overview/EnvironmentalOutlook.tsx` with `git mv`): ventilation (solid, left axis), inversion (dashed, right axis) and the labelled poor threshold (dotted); axis titles and units; takeaway sentence; `accessibilityLayer`; a 48-row data table with an inversion column. It replaces the legacy purple chart in `DispersionPanel.tsx`, whose "How this is calculated" note is kept.
+- The Overview now has `OutlookSummary.tsx`: the takeaway sentence, "hours below the poor threshold" and "hours with a surface inversion", and a link to the chart. It draws no chart.
+- `model.ts` gains `inversionHours()` (1 test added; 15 tests pass).
+- Browser check: the Overview contains 0 charts; the Dispersion section contains 1, and the legacy `.chart-wrap` is gone; no page overflow at 1280 and 360.
+- Noticed, not changed: at 360 px the legacy dispersion metric cards truncate their hint text with an ellipsis.

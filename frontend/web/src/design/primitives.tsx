@@ -9,10 +9,10 @@ import './primitives.css';
 // Four data classes. Each carries a text label, an icon and a border pattern, so colour is never the only cue.
 export type SourceKind = 'live' | 'regional' | 'model' | 'simulation';
 const SOURCE: Record<SourceKind, { label: string; Icon: typeof RadioTower }> = {
-  live: { label: 'LIVE · STATION', Icon: RadioTower },
+  live: { label: 'MEASURED · AEIOS STATION', Icon: RadioTower },
   regional: { label: 'REGIONAL MODEL', Icon: Globe2 },
   model: { label: 'AEIOS MODEL', Icon: Cpu },
-  simulation: { label: 'SIMULATION', Icon: FlaskConical },
+  simulation: { label: 'SIMULATION ONLY', Icon: FlaskConical },
 };
 export function SourceLabel({ kind, detail }: { kind: SourceKind; detail?: string }) {
   const { label, Icon } = SOURCE[kind];

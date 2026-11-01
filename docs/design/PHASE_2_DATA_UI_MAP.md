@@ -37,7 +37,8 @@
 | Fire-match caveat | Static, from the existing smoke-origin copy | "Air-mass pathway estimate, not source confirmation." Shown wherever an alert is shown. |
 | Weather context (temp, humidity, wind, pressure, UV) | `weather.current` | Labelled REGIONAL MODEL (Open-Meteo), secondary band. |
 | Regional air quality | `aq.current.us_aqi`, `aq.current.pm2_5`, `aqWarning` | Labelled REGIONAL MODEL (CAMS, about 45 km, 3-hourly), "not measured at this site". Kept visually apart from the local PM2.5. US AQI is labelled "US AQI". |
-| Outlook chart | `ventilation(hourly, i)` for the next 48 hours, `VENTILATION_POOR` | One series, REGIONAL MODEL. Takeaway sentence from counts of hours below the threshold. Axis titles, units, threshold label, data-table alternative, `accessibilityLayer`. |
+| Outlook summary (Overview) | `ventilation()` and `inversion()` for the next 48 hours, `VENTILATION_POOR` | **No chart on the Overview.** A takeaway sentence and two counts (hours below the threshold, hours with an inversion), REGIONAL MODEL, linking to the canonical chart. |
+| 48 h chart (Pollution dispersion) | Same series | The **one** canonical chart (`components/VentilationChart.tsx`): ventilation and inversion, axis titles, units, labelled threshold, data-table alternative, `accessibilityLayer`. |
 | Destination links | Existing section ids in `App.tsx` | Navigation only. No invented actions. |
 
 ## 3. Deliberately **not** shown (and why)

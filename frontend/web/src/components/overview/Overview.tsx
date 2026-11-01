@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import './overview.css';
 import { EmptyState, type OperationalState } from '../../design/primitives';
-import { compass, formatHour, numeric, type WeatherPayload } from '../../lib/api';
+import { compass, numeric, type WeatherPayload } from '../../lib/api';
 import { CALM_WIND_KMH, dispersionClass, inversion, meanLowWind, ventilation, VENTILATION_POOR } from '../../lib/derived';
 import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeFreshness, siteReading, useAeios } from '../../lib/freshness';
 import { useAlerts } from '../SmokeAlerts';
 import AlertSummary from './AlertSummary';
 import EnvironmentalAssessment from './EnvironmentalAssessment';
-import EnvironmentalOutlook from './EnvironmentalOutlook';
+import OutlookRibbon from './OutlookRibbon';
+import SituationHeader from './SituationHeader';
+import SystemRail, { type FeedCell } from './SystemRail';
 import LocalObservations from './LocalObservations';
-import OperationalHealth from './OperationalHealth';
 import OverviewDestinations from './OverviewDestinations';
 import RegionalContext from './RegionalContext';
-import SituationMasthead from './SituationMasthead';
-import { istTime } from './format';
+import { istTime, localSlot } from './format';
 import {
   alertOutcome, assessmentLimits, dispersionEvidence, feedStatus, healthRows, observationHeadline, observationState,
   packetValues, type Freshness, type HealthRow,
@@ -99,13 +99,32 @@ export default function Overview(p: OverviewProps) {
   // --- outlook: ventilation for the next 48 hours (regional model) ---
   const outlookRows = useMemo(() => {
     const times = p.hourly.time || [];
-    const rows: Array<{ time: string; vc: number | null }> = [];
-    for (let i = idx; i < Math.min(times.length, idx + 48); i += 1) rows.push({ time: formatHour(String(times[i])), vc: ventilation(p.hourly, i) });
+    const rows: Array<{ time: string; vc: number | null; inv: number | null }> = [];
+    for (let i = idx; i < Math.min(times.length, idx + 48); i += 1) rows.push({ time: String(times[i]), vc: ventilation(p.hourly, i), inv: inversion(p.hourly, i) });
     return rows;
   }, [p.hourly, idx]);
 
+  // --- atmospheric column: existing hourly model fields at the selected hour ---
+  const column = {
+    blh: finiteOrNull(p.hourly.boundary_layer_height?.[idx]),
+    temps: [2, 80, 120, 180].map((h) => ({ h, t: finiteOrNull(p.hourly[`temperature_${h}m`]?.[idx]) })),
+    winds: [10, 80, 120, 180].map((h) => {
+      const dir = finiteOrNull(p.hourly[`wind_direction_${h}m`]?.[idx]);
+      return { h, speed: finiteOrNull(p.hourly[`wind_speed_${h}m`]?.[idx]), dir, from: dir === null ? '' : compass(dir) };
+    }),
+  };
+
+  // --- data feeds the assessment depends on, shown beside the AEIOS edge in the telemetry strip ---
+  const feed = feedStatus({ loadState, stale: Boolean(p.forecastMeta?.stale) });
+  const feeds: FeedCell[] = [
+    { id: 'feed-weather', scope: 'Weather model', name: 'Open-Meteo', state: loadState === 'error' ? 'unavailable' : loadState === 'loading' ? 'checking' : p.forecastMeta?.stale ? 'stale' : 'online',
+      detail: loadState === 'ready' ? `Valid ${p.selectedTime ? localSlot(p.selectedTime) : '—'}; fetched ${istTime(p.lastUpdated)}.` : feed.label + '.' },
+    { id: 'feed-aq', scope: 'Air-quality model', name: 'CAMS · ~45 km', state: p.aq ? (p.aqWarning ? 'stale' : 'online') : 'unavailable',
+      detail: p.aq ? (p.aqWarning || 'Regional estimate, 3-hourly.') : (p.aqWarning || 'Not available.') },
+  ];
+
   const aqiNumber = finiteOrNull((p.aq?.current as any)?.us_aqi);
-  const modelHour = p.selectedTime ? `${p.selectedTime.replace('T', ' ')} IST` : '—';
+  const modelHour = p.selectedTime ? localSlot(p.selectedTime) : '—';
 
   return (
     <section id="overview" className="page-section" aria-label="Overview">
@@ -113,28 +132,31 @@ export default function Overview(p: OverviewProps) {
         {fixtureName && (
           <div className="cc-dev" role="note"><AlertTriangle size={16} aria-hidden="true" /> <span><strong>Development fixture &quot;{fixtureName}&quot;.</strong> Illustrative state for visual checks, not real data. Not present in production builds.</span></div>
         )}
-        <SituationMasthead
-          title={p.title} subtitle={p.subtitle} lat={p.lat} lon={p.lon} feed={feedStatus({ loadState, stale: Boolean(p.forecastMeta?.stale) })}
+        <SituationHeader
+          cls={cls} loadState={loadState} site={p.title} subtitle={p.subtitle} lat={p.lat} lon={p.lon} feed={feed}
           modelFetched={istTime(p.lastUpdated)} modelHour={modelHour} stationNode={reading.node} stationState={stationState}
-          stationAgo={!loaded ? 'checking…' : failed ? 'unknown (gateway data unavailable)' : packetAgo} refreshing={loadState === 'loading'} onRefresh={p.onRetry}
+          stationAgo={!loaded ? 'checking…' : failed ? 'unknown (gateway data unavailable)' : packetAgo}
         />
         {p.forecastMeta?.warning && (
           <div style={{ marginTop: 'var(--aeios-space-6)' }}><EmptyState kind="stale" title="Weather model feed is a cached run">{p.forecastMeta.warning}</EmptyState></div>
         )}
-        <div className="cc-top">
-          <div className="cc-a-assess">
-            <EnvironmentalAssessment loadState={loadState} cls={cls} evidence={evidence} limits={limits} hourLabel={modelHour} onNavigate={p.onNavigate} onRetry={p.onRetry} />
+        <div className="cc-band">
+          <div className="cc-band__main">
+            <EnvironmentalAssessment
+              loadState={loadState} evidence={evidence} limits={limits} hourLabel={modelHour} column={column} onNavigate={p.onNavigate} onRetry={p.onRetry}
+              criteria={{ vc, wind, inv, blh: column.blh, poorAt: VENTILATION_POOR, calmKmh: CALM_WIND_KMH }}
+            />
           </div>
-          <div className="cc-a-right">
-            <div className="cc-a-obs">
-              <LocalObservations loaded={loaded} failed={failed} state={observation} node={reading.node} headline={headline} values={values} last={reading.packet ? values : null} packetAgo={packetAgo} />
-            </div>
-            <div className="cc-a-health"><OperationalHealth rows={health} onNavigate={p.onNavigate} /></div>
+          <div className="cc-band__side">
+            <LocalObservations loaded={loaded} failed={failed} state={observation} node={reading.node} headline={headline} values={values} last={reading.packet ? values : null} packetAgo={packetAgo} />
           </div>
-          <div className="cc-a-alerts"><AlertSummary outcome={outcome} windowHours={ALERT_WINDOW_HOURS} onNavigate={p.onNavigate} /></div>
+        </div>
+        <SystemRail feeds={feeds} rows={health} onNavigate={p.onNavigate} />
+        <div className="cc-band cc-band--b">
+          <div className="cc-band__alerts"><AlertSummary outcome={outcome} windowHours={ALERT_WINDOW_HOURS} onNavigate={p.onNavigate} /></div>
+          <div className="cc-band__outlook"><OutlookRibbon rows={outlookRows} poorAt={VENTILATION_POOR} loadState={loadState} onNavigate={p.onNavigate} /></div>
         </div>
         <div className="cc-grid">
-          <div className="cc-span-12"><EnvironmentalOutlook rows={outlookRows} poorAt={VENTILATION_POOR} loadState={loadState} /></div>
           <div className="cc-span-12">
             <RegionalContext
               weather={{ temp: fixed(p.current.temperature_2m, 1), humidity: fixed(p.current.relative_humidity_2m), wind: fixed(p.current.wind_speed_10m, 1), windDir: compass(p.current.wind_direction_10m) ? `from ${compass(p.current.wind_direction_10m)}` : '', pressure: fixed(p.current.pressure_msl), uv: fixed(p.current.uv_index, 1) }}

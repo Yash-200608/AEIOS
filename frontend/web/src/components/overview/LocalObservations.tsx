@@ -25,9 +25,9 @@ export default function LocalObservations({ loaded, failed, state, node, headlin
   return (
     <section className="cc-obs" aria-labelledby="cc-obs-h" aria-busy={!loaded}>
       <div className="cc-head">
-        <div><div className="ax-eyebrow">Local observations</div><h2 id="cc-obs-h" className="cc-h2">{loaded ? headline.title : 'Checking the gateway…'}</h2></div>
+        <div><div className="ax-eyebrow">Measured air at the site</div><h2 id="cc-obs-h" className="cc-h2">{loaded ? headline.title : 'Checking the gateway…'}</h2></div>
         <div className="cc-aside">
-          <SourceLabel kind="live" detail="AEIOS station" />
+          <SourceLabel kind="live" />
           {loaded && <StateLabel state={failed ? 'unavailable' : NODE_STATE[state]} scope={node ? `Node ${node}` : 'Node'} />}
         </div>
       </div>

@@ -338,10 +338,10 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
         <button className={`site-link ${site === 'chandu' ? 'selected' : ''}`} onClick={() => setSite('chandu')}><span className="site-dot chandu-dot" /><span><b>Chandu village</b><small>Gurugram, Haryana</small></span></button>
         <div className="sidebar-bottom">
           <div className="node-health-card">
-            <div className="node-health-head"><span className="pulse-dot" /> LOCAL EDGE NODE</div>
+            <div className="node-health-head">LOCAL EDGE NODE</div>
             <b>Raspberry Pi 5 · node-gateway</b>
             <small>Local model inference · syncs to cloud</small>
-            <div className="health-foot"><span><ShieldCheck size={12} /> Real data only</span><span className="health-pip">SYNC</span></div>
+            <div className="health-foot"><span><ShieldCheck size={12} /> Real data only; live state is in Operational health</span></div>
           </div>
           <div className="side-footer">AEIOS WEATHER SYSTEM <span>v0.1.0</span></div>
         </div>
@@ -369,6 +369,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           aq={aq} aqWarning={aqWarning} onRetry={() => void load()} onNavigate={navigate}
         />
 
+        <p className="specialist-divider"><span>Specialist analysis</span> Each section below goes deeper into one question.</p>
         <DispersionPanel hourly={hourly} index={selectedHour} />
 
         <section id="atmosphere" className="page-section">

@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  alertOutcome, aqiCategory, assessmentLimits, dispersionEvidence, feedStatus, healthRows, observationHeadline, observationState,
+  alertOutcome, aqiCategory, inversionHours, gaugePosition, mixingLayer, profileDomain, flowDuration, ribbonCells, ventilationWindows, situationStatement, assessmentLimits, dispersionEvidence, feedStatus, healthRows, observationHeadline, observationState,
   outlookSummary, packetValues, particulate, verdictView, type AlertRow,
 } from './model.ts';
 
@@ -149,4 +149,56 @@ test('aqiCategory: US AQI bands, and missing is not a category', () => {
   assert.equal(aqiCategory(150), 'Unhealthy for sensitive groups');
   assert.equal(aqiCategory(151), 'Unhealthy');
   assert.equal(aqiCategory(260), 'Very unhealthy');
+});
+
+test('inversionHours: only positive inversions count; missing is not an inversion', () => {
+  assert.equal(inversionHours([1.8, 0, -0.5, null, 0.1]), 2);
+  assert.equal(inversionHours([null, null]), 0);
+  assert.equal(inversionHours([]), 0);
+});
+
+test('gaugePosition: linear and log scales, clamping flags, null stays null', () => {
+  assert.equal(gaugePosition(null, { min: 0, max: 10, scale: 'linear' }), null);
+  assert.equal(gaugePosition(5, { min: 0, max: 10, scale: 'linear' })!.pos, 0.5);
+  const lo = gaugePosition(-2, { min: 0, max: 10, scale: 'linear' })!;
+  assert.deepEqual([lo.pos, lo.below, lo.above], [0, true, false]);
+  assert.equal(gaugePosition(1000, { min: 10, max: 100000, scale: 'log' })!.pos, 0.5);
+  const hi = gaugePosition(1e6, { min: 10, max: 100000, scale: 'log' })!;
+  assert.deepEqual([hi.pos, hi.above], [1, true]);
+});
+
+test('mixingLayer: clamps to the chart ceiling and says so; invalid is null', () => {
+  assert.deepEqual(mixingLayer(35, 200), { shown: 35, clamped: false });
+  assert.deepEqual(mixingLayer(1520, 200), { shown: 200, clamped: true });
+  assert.equal(mixingLayer(null, 200), null);
+  assert.equal(mixingLayer(-5, 200), null);
+});
+
+test('profileDomain: needs two values; pads by 1 degree', () => {
+  assert.deepEqual(profileDomain([20.4, 22.1, 24.5, null]), [19, 26]);
+  assert.equal(profileDomain([20, null, null]), null);
+});
+
+test('flowDuration: faster wind crosses faster; unknown speed never animates', () => {
+  assert.equal(flowDuration(null), null);
+  assert.equal(flowDuration(-1), null);
+  assert.ok(flowDuration(1)! > flowDuration(5)!);
+  assert.equal(flowDuration(0), 30);
+  assert.equal(flowDuration(50), 1.2);
+});
+
+test('ribbonCells and ventilationWindows: unknown is neither poor nor adequate', () => {
+  const cells = ribbonCells([
+    { time: 'a', vc: 100, inv: 1 }, { time: 'b', vc: 7000, inv: -1 }, { time: 'c', vc: 8000, inv: null },
+    { time: 'd', vc: null, inv: null }, { time: 'e', vc: 9000, inv: 0.5 },
+  ], 6000);
+  assert.deepEqual(cells.map((c) => c.state), ['poor', 'adequate', 'adequate', 'unknown', 'adequate']);
+  assert.deepEqual(cells.map((c) => c.inversion), [true, false, false, false, true]);
+  assert.deepEqual(ventilationWindows(cells), [{ from: 'b', to: 'c', hours: 2 }, { from: 'e', to: 'e', hours: 1 }]);
+  assert.deepEqual(ventilationWindows(ribbonCells([{ time: 'x', vc: 1, inv: null }], 6000)), []);
+});
+
+test('situationStatement: built only from the verdict', () => {
+  assert.deepEqual(situationStatement({ label: 'Limited', tone: 'fair', detail: '' }), { lead: 'Dispersion is limited.', tone: 'fair' });
+  assert.equal(situationStatement({ label: 'Unknown', tone: 'fair', detail: '' }).tone, 'unknown');
 });

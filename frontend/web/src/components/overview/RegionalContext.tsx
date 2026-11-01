@@ -12,7 +12,7 @@ export default function RegionalContext({ weather, aqi, aqPm25, aqWarning, aqAva
   return (
     <section className="cc-region" aria-labelledby="cc-region-h">
       <div className="ax-eyebrow">Regional context</div>
-      <h2 id="cc-region-h" className="cc-h2">Model estimates for this area, not measured on site</h2>
+      <h2 id="cc-region-h" className="cc-h2">Model estimates for the area, not measured on site</h2>
       <div className="cc-region__cols">
         <div>
           <SourceLabel kind="regional" detail="Open-Meteo weather model" />

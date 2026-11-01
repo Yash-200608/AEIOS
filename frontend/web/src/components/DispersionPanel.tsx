@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, Area } from 'recharts';
+import VentilationChart, { type VentilationRow } from './VentilationChart';
 import { formatHour, round } from '../lib/api';
 import { dispersionClass, inversion, meanLowWind, ventilation, VENTILATION_POOR } from '../lib/derived';
 
@@ -35,16 +35,14 @@ export default function DispersionPanel({ hourly, index }: { hourly: Hourly; ind
 
   const chart = useMemo(() => {
     const times = hourly.time || [];
-    const rows = [];
+    const rows: VentilationRow[] = [];
     for (let i = index; i < Math.min(times.length, index + 48); i += 1) {
       const v = ventilation(hourly, i);
       const d = inversion(hourly, i);
-      rows.push({ hour: formatHour(String(times[i])), vc: v === null ? null : Math.round(v), inv: d === null ? null : Math.round(d * 10) / 10 });
+      rows.push({ time: formatHour(String(times[i])), vc: v, inv: d });
     }
     return rows;
   }, [hourly, index]);
-  const poorHours = chart.filter((r) => r.vc !== null && r.vc < VENTILATION_POOR).length;
-  const invHours = chart.filter((r) => r.inv !== null && r.inv > 0).length;
 
   return (
     <section id="dispersion" className="page-section">
@@ -75,34 +73,22 @@ export default function DispersionPanel({ hourly, index }: { hourly: Hourly; ind
         </div>
       </div>
 
-      <div className="panel" style={{ marginTop: 12 }}>
-        <div className="panel-header">
-          <div><div className="panel-title">{chart.length && poorHours === chart.length ? 'Dispersion is forecast to stay unfavourable for the next 48 hours' : poorHours === 0 ? 'Ventilation stays above the poor threshold for the next 48 hours' : `Ventilation is poor for ${poorHours} of the next ${chart.length} hours`}</div>
-            <div className="panel-subtitle">{poorHours} h below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s (lower is worse) · {invHours} h with a surface inversion · regional model, not AEIOS sensors</div></div>
-          <span className="legend-inline"><i className="legend-pm25" /> Ventilation (solid, left axis) <i className="legend-pm10 dashed" /> Inversion (dashed, right axis)</span>
-        </div>
-        {chart.length ? (
-          <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart} margin={{ top: 12, right: 4, left: -6, bottom: 2 }}>
-            <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} />
-            <XAxis dataKey="hour" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={5} />
-            <YAxis yAxisId="vc" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `${Math.round(v / 1000)}k`} label={{ value: 'Ventilation (m²/s)', angle: -90, position: 'insideLeft', fill: '#b3a8c0', fontSize: 10, dx: 4 }} />
-            <YAxis yAxisId="inv" orientation="right" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} width={40} label={{ value: 'Inversion (°C)', angle: 90, position: 'insideRight', fill: '#b3a8c0', fontSize: 10, dx: -4 }} />
-            <Tooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
-            <ReferenceLine yAxisId="vc" y={VENTILATION_POOR} stroke="#ec8b74" strokeDasharray="4 4" label={{ value: 'IMD poor < 6,000', fill: '#ec8b74', fontSize: 9, position: 'insideTopLeft' }} />
-            <ReferenceLine yAxisId="inv" y={0} stroke="#5b4a6f" />
-            <Area yAxisId="vc" dataKey="vc" type="monotone" stroke="#00e5ff" fill="#00e5ff" fillOpacity={0.12} strokeWidth={2} name="Ventilation m²/s" />
-            <Line yAxisId="inv" dataKey="inv" type="monotone" stroke="#a77bf0" strokeWidth={1.6} strokeDasharray="5 3" dot={false} name="Inversion °C" />
-          </ComposedChart></ResponsiveContainer></div>
-        ) : <div className="empty-chart">Waiting for forecast values…</div>}
-        <details className="how-it-works">
-          <summary>How this is calculated</summary>
-          <ul>
-            <li><b>Ventilation coefficient</b> = mixing height × mean wind in the lowest 180 m. It indicates how well the air can carry pollutants away.</li>
-            <li><b>Inversion</b>: warmer air above cooler surface air suppresses vertical mixing and traps pollution near the ground.</li>
-            <li><b>Unfavourable</b> means ventilation below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s with mean wind under 10 km/h (IMD criterion).</li>
-          </ul>
-          <p>Both inputs come from the regional weather model, not from AEIOS sensors.</p>
-        </details>
+      <div style={{ marginTop: 12 }}>
+        <VentilationChart
+          rows={chart}
+          poorAt={VENTILATION_POOR}
+          footer={(
+            <details className="how-it-works">
+              <summary>How this is calculated</summary>
+              <ul>
+                <li><b>Ventilation coefficient</b> = mixing height × mean wind in the lowest 180 m. It indicates how well the air can carry pollutants away.</li>
+                <li><b>Inversion</b>: warmer air above cooler surface air suppresses vertical mixing and traps pollution near the ground.</li>
+                <li><b>Unfavourable</b> means ventilation below {VENTILATION_POOR.toLocaleString('en-IN')} m²/s with mean wind under 10 km/h (IMD criterion).</li>
+              </ul>
+              <p>Both inputs come from the regional weather model, not from AEIOS sensors.</p>
+            </details>
+          )}
+        />
       </div>
 
       <div className="panel" style={{ marginTop: 12 }}>

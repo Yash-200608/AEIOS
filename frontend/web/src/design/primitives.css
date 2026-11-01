@@ -2,13 +2,13 @@
 .ax-num, .ax-mono { font-family: var(--aeios-font-mono); font-variant-numeric: tabular-nums; }
 .ax-eyebrow { font: 600 var(--aeios-text-xs)/1.2 var(--aeios-font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--aeios-text-tertiary); }
 
-/* Source labels: text + icon + border pattern */
-.ax-source { display: inline-flex; align-items: center; gap: var(--aeios-space-1); padding: 3px var(--aeios-space-2); border-radius: var(--aeios-radius-sm); font: 600 var(--aeios-text-xs)/1.3 var(--aeios-font-ui); letter-spacing: 0.04em; border: 1.5px solid currentColor; white-space: nowrap; }
-.ax-source__detail { font-weight: 400; letter-spacing: 0; opacity: 0.92; }
-.ax-source--live { color: var(--aeios-source-live); background: var(--aeios-tint-live); border-style: solid; }
-.ax-source--regional { color: var(--aeios-source-regional); background: var(--aeios-tint-regional); border-style: double; border-width: 3px; padding: 1px calc(var(--aeios-space-2) - 1px); }
-.ax-source--model { color: var(--aeios-source-model); background: var(--aeios-tint-model); border-style: dotted; border-width: 2px; }
-.ax-source--simulation { color: var(--aeios-source-simulation); background: repeating-linear-gradient(135deg, var(--aeios-tint-simulation) 0 6px, transparent 6px 12px); border-style: dashed; }
+/* Source labels: text + icon carry the meaning; one hairline border and a 12% tint carry the colour (Phase 2A). */
+.ax-source { display: inline-flex; align-items: center; gap: var(--aeios-space-1); padding: 3px var(--aeios-space-2); border-radius: var(--aeios-radius-sm); font: 600 var(--aeios-text-xs)/1.3 var(--aeios-font-ui); letter-spacing: 0.04em; border: 1px solid currentColor; white-space: nowrap; }
+.ax-source__detail { font-weight: 400; letter-spacing: 0; color: var(--aeios-text-secondary); }
+.ax-source--live { color: var(--aeios-source-live); background: var(--aeios-tint-live); }
+.ax-source--regional { color: var(--aeios-source-regional); background: var(--aeios-tint-regional); }
+.ax-source--model { color: var(--aeios-source-model); background: var(--aeios-tint-model); }
+.ax-source--simulation { color: var(--aeios-source-simulation); background: repeating-linear-gradient(135deg, var(--aeios-tint-simulation) 0 6px, transparent 6px 12px); }
 
 /* Operational state labels */
 .ax-state { display: inline-flex; align-items: center; gap: var(--aeios-space-1); padding: 3px var(--aeios-space-2); border-radius: var(--aeios-radius-sm); font: 600 var(--aeios-text-xs)/1.3 var(--aeios-font-ui); letter-spacing: 0.04em; white-space: nowrap; border: 1px solid currentColor; }

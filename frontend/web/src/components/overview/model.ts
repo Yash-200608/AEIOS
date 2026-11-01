@@ -159,6 +159,11 @@ export function alertOutcome(i: {
 }
 
 /* ---------- Outlook ---------- */
+/** Hours with a positive inversion (warm lid). Missing hours are not counted. */
+export function inversionHours(series: Array<number | null>): number {
+  return series.filter((v): v is number => v !== null && v > 0).length;
+}
+
 export function outlookSummary(series: Array<number | null>, poorAt: number): { hours: number; valid: number; poor: number; takeaway: string } {
   const valid = series.filter((v): v is number => v !== null).length;
   const poor = series.filter((v) => v !== null && v < poorAt).length;
@@ -179,4 +184,64 @@ export function aqiCategory(aqi: number | null): string | null {
   if (aqi <= 150) return 'Unhealthy for sensitive groups';
   if (aqi <= 200) return 'Unhealthy';
   return 'Very unhealthy';
+}
+
+/* ---------- Instruments (Phase 2A): scales and encodings, all pure ---------- */
+
+/** Position of a value on a gauge, 0..1, with flags when it falls outside the drawn range. Null stays null. */
+export function gaugePosition(value: number | null, o: { min: number; max: number; scale: 'linear' | 'log' }): { pos: number; below: boolean; above: boolean } | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  const f = (v: number) => (o.scale === 'log' ? Math.log10(Math.max(v, o.min)) : v);
+  const lo = f(o.min), hi = f(o.max);
+  const raw = (f(value) - lo) / (hi - lo);
+  return { pos: Math.min(1, Math.max(0, raw)), below: value < o.min, above: value > o.max };
+}
+
+/** Mixing layer as drawn in the 0..ceiling column: clamped with a flag when it is deeper than the chart. */
+export function mixingLayer(blh: number | null, ceiling: number): { shown: number; clamped: boolean } | null {
+  if (blh === null || !Number.isFinite(blh) || blh < 0) return null;
+  return { shown: Math.min(blh, ceiling), clamped: blh > ceiling };
+}
+
+/** Temperature axis for the profile: the finite values padded by 1 °C, or null when there are fewer than two. */
+export function profileDomain(temps: Array<number | null>): [number, number] | null {
+  const t = temps.filter((v): v is number => v !== null && Number.isFinite(v));
+  if (t.length < 2) return null;
+  return [Math.floor(Math.min(...t) - 1), Math.ceil(Math.max(...t) + 1)];
+}
+
+/**
+ * Seconds for a flow streak to cross the column. Encodes modelled wind speed only: faster wind, shorter crossing.
+ * Null (no animation) when the speed is unknown, so a missing value never looks like calm or like flow.
+ */
+export function flowDuration(speedMs: number | null): number | null {
+  if (speedMs === null || !Number.isFinite(speedMs) || speedMs < 0) return null;
+  return Math.min(30, Math.max(1.2, 12 / Math.max(speedMs, 0.4)));
+}
+
+export type RibbonCell = { time: string; state: 'poor' | 'adequate' | 'unknown'; inversion: boolean };
+export function ribbonCells(rows: Array<{ time: string; vc: number | null; inv: number | null }>, poorAt: number): RibbonCell[] {
+  return rows.map((r) => ({ time: r.time, state: r.vc === null ? 'unknown' : r.vc < poorAt ? 'poor' : 'adequate', inversion: r.inv !== null && r.inv > 0 }));
+}
+
+/** Contiguous runs of adequate ventilation, for the text alternative of the ribbon. */
+export function ventilationWindows(cells: RibbonCell[]): Array<{ from: string; to: string; hours: number }> {
+  const out: Array<{ from: string; to: string; hours: number }> = [];
+  let start = -1;
+  cells.forEach((c, i) => {
+    if (c.state === 'adequate' && start < 0) start = i;
+    const end = c.state !== 'adequate' || i === cells.length - 1;
+    if (start >= 0 && end) {
+      const last = c.state === 'adequate' ? i : i - 1;
+      out.push({ from: cells[start].time, to: cells[last].time, hours: last - start + 1 });
+      start = -1;
+    }
+  });
+  return out;
+}
+
+/** The situation statement: a sentence built only from the existing verdict. */
+export function situationStatement(cls: DispersionClass): { lead: string; tone: 'good' | 'fair' | 'poor' | 'unknown' } {
+  if (cls.label === 'Unknown') return { lead: 'Dispersion cannot be assessed right now.', tone: 'unknown' };
+  return { lead: `Dispersion is ${cls.label.toLowerCase()}.`, tone: cls.tone };
 }
