@@ -1,0 +1,406 @@
+/*
+ * Overview landing globe (GlobeHero.tsx). Tokens only (src/design/tokens.css); the local --globe-* custom properties are
+ * durations derived for this component and collapse under reduced motion.
+ *
+ * Phones and tablets: the globe band sits above the copy (about 52 % of the small viewport height), with the intro controls
+ * on its bottom edge.
+ * Desktop (>= 1024 px): copy left, globe right, the band fits the first screen (min(78vh, 760px)).
+ */
+.globe-hero {
+  --globe-reveal-dur: 760ms;
+  --globe-reveal-step: 120ms;
+  --globe-bar-dur: 900ms;
+  --globe-band: 52vh;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'visual'
+    'copy';
+  overflow: hidden;
+  isolation: isolate;
+  container-type: inline-size; /* the title scales with the hero's own width, not the viewport */
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: var(--aeios-radius-xl);
+  background:
+    radial-gradient(ellipse 85% 48% at 50% 27%, var(--aeios-tint-regional), transparent 72%),
+    radial-gradient(ellipse 42% 26% at 50% 28%, var(--aeios-tint-live), transparent 74%),
+    linear-gradient(180deg, var(--aeios-surface-1) 0%, var(--aeios-canvas) 100%);
+  color: var(--aeios-text-primary);
+}
+
+@supports (height: 1svh) {
+  .globe-hero {
+    --globe-band: 52svh;
+  }
+}
+
+/* ---- copy column ---- */
+.globe-hero__copy {
+  grid-area: copy;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aeios-space-4);
+  min-width: 0;
+  padding: var(--aeios-space-5) var(--aeios-space-4) var(--aeios-space-6);
+}
+
+.globe-hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aeios-space-2);
+  margin: 0;
+  color: var(--aeios-accent);
+  font: 600 var(--aeios-text-xs) / 1.3 var(--aeios-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.globe-hero__kicker::before {
+  content: '';
+  flex: none;
+  width: 22px;
+  height: 1px;
+  background: currentcolor;
+}
+
+.globe-hero__title {
+  margin: 0;
+  font-family: var(--aeios-font-ui);
+  font-size: var(--aeios-text-display);
+  font-weight: 650;
+  line-height: var(--aeios-leading-tight);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  color: var(--aeios-text-primary);
+  background: linear-gradient(100deg, var(--aeios-text-primary) 35%, var(--aeios-accent) 115%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.globe-hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aeios-space-3);
+  min-width: 0;
+  color: var(--aeios-text-secondary);
+  font-size: var(--aeios-text-base);
+  line-height: var(--aeios-leading-body);
+}
+
+/* Rise-in during the intro. Content is only ever hidden while data-globe-copy="pending" (intro playing, motion allowed);
+   an item that receives focus is shown at once. */
+.globe-reveal {
+  transition:
+    opacity var(--globe-reveal-dur) var(--aeios-ease),
+    transform var(--globe-reveal-dur) var(--aeios-ease);
+  transition-delay: calc(var(--i, 0) * var(--globe-reveal-step));
+}
+
+.globe-hero[data-globe-copy='pending'] .globe-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition-delay: 0ms;
+}
+
+.globe-hero[data-globe-copy='pending'] .globe-reveal:focus-within {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* ---- controls ----
+   Phones/tablets: overlaid on the bottom edge of the globe band (in the letterbox while the intro plays), so Skip is on the
+   first screen. Desktop: under the copy. */
+.globe-hero__controls {
+  grid-area: visual;
+  place-self: end start;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aeios-space-2);
+  margin: 0 var(--aeios-space-4) var(--aeios-space-3);
+}
+
+.globe-hero__control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--aeios-space-3);
+  border: 1px solid var(--aeios-border-strong);
+  border-radius: var(--aeios-radius-xl);
+  background: var(--aeios-scrim);
+  color: var(--aeios-text-secondary);
+  font: 500 var(--aeios-text-sm) / 1 var(--aeios-font-ui);
+  cursor: pointer;
+  transition:
+    color var(--aeios-dur-micro) var(--aeios-ease),
+    background-color var(--aeios-dur-micro) var(--aeios-ease),
+    border-color var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.globe-hero__control:hover {
+  border-color: var(--aeios-text-tertiary);
+  background: var(--aeios-surface-2);
+  color: var(--aeios-text-primary);
+}
+
+.globe-hero__control:focus-visible {
+  outline: 2px solid var(--aeios-focus-ring);
+  outline-offset: 2px;
+}
+
+.globe-hero__control[aria-pressed='true'] {
+  border-color: var(--aeios-accent);
+  background: var(--aeios-tint-live);
+  color: var(--aeios-accent);
+}
+
+@media (pointer: coarse) {
+  .globe-hero__control {
+    min-height: var(--aeios-target-touch);
+  }
+}
+
+/* Narrow heroes: one compact row across the band's bottom edge (wraps upward only below about 330 px). */
+@container (width < 440px) {
+  .globe-hero__controls {
+    justify-content: space-between;
+    justify-self: stretch;
+    gap: var(--aeios-space-1);
+    margin-inline: var(--aeios-space-3);
+  }
+
+  .globe-hero__control {
+    gap: 5px;
+    padding: 0 var(--aeios-space-2);
+    font-size: var(--aeios-text-xs);
+  }
+}
+
+/* ---- globe stage ---- */
+.globe-hero__visual {
+  grid-area: visual;
+  position: relative;
+  min-width: 0;
+}
+
+.globe-hero__stage {
+  position: relative;
+  height: var(--globe-band);
+  min-height: 280px;
+  max-height: 560px;
+  overflow: hidden;
+}
+
+.globe-hero__canvas {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y;
+}
+
+.globe-hero__fallback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(72%, 72vh);
+  aspect-ratio: 1;
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, var(--aeios-surface-3), var(--aeios-canvas) 72%);
+  transform: translate(-50%, -50%);
+}
+
+/* Site label: the engine moves the outer box to the marker (transform only) and sets data-placed. */
+.globe-hero__label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.globe-hero__label[data-placed='true'] {
+  visibility: visible;
+}
+
+.globe-hero__label-inner {
+  position: absolute;
+  bottom: 34px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: min(280px, 86vw);
+  padding: 6px 10px;
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: var(--aeios-radius-sm);
+  background: var(--aeios-scrim);
+  box-shadow: var(--aeios-shadow-raised);
+  text-align: center;
+  transform: translateX(-50%);
+  transition:
+    opacity var(--globe-reveal-dur) var(--aeios-ease),
+    transform var(--globe-reveal-dur) var(--aeios-ease);
+  transition-delay: calc(3 * var(--globe-reveal-step));
+}
+
+.globe-hero__label-inner::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 14px;
+  background: linear-gradient(180deg, var(--aeios-accent), transparent);
+}
+
+.globe-hero[data-globe-copy='pending'] .globe-hero__label-inner {
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition-delay: 0ms;
+}
+
+.globe-hero__label-name {
+  color: var(--aeios-text-primary);
+  font: 600 var(--aeios-text-sm) / 1.25 var(--aeios-font-ui);
+}
+
+.globe-hero__label-detail {
+  color: var(--aeios-text-secondary);
+  font: var(--aeios-text-xs) / 1.25 var(--aeios-font-mono);
+}
+
+/* Cinematic letterbox during the intro; retracts with the copy. Phones: over the globe band only (never over the copy or
+   its controls). Desktop: full width, painted beneath the copy column so text stays on top. */
+.globe-hero__letterbox {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.globe-hero__letterbox::before,
+.globe-hero__letterbox::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9%;
+  background: var(--aeios-canvas);
+  transition: transform var(--globe-bar-dur) var(--aeios-ease);
+}
+
+.globe-hero__letterbox::before {
+  top: 0;
+  transform-origin: top;
+}
+
+.globe-hero__letterbox::after {
+  bottom: 0;
+  transform-origin: bottom;
+}
+
+.globe-hero[data-globe-copy='shown'] .globe-hero__letterbox::before,
+.globe-hero[data-globe-copy='shown'] .globe-hero__letterbox::after {
+  transform: scaleY(0);
+}
+
+/* Phones: top-right of the band (the controls hold its bottom edge). Desktop: bottom-right. */
+.globe-hero__caption {
+  position: absolute;
+  top: var(--aeios-space-3);
+  right: var(--aeios-space-4);
+  z-index: 4;
+  margin: 0;
+  color: var(--aeios-text-tertiary);
+  font: var(--aeios-text-xs) / 1.3 var(--aeios-font-mono);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+/* ---- desktop: copy left, globe right ---- */
+@media (width >= 1024px) {
+  .globe-hero {
+    --globe-band: min(78vh, 760px);
+
+    grid-template:
+      '. visual' 1fr
+      'copy visual' auto
+      'controls visual' auto
+      '. visual' 1fr
+      / minmax(0, 0.92fr) minmax(0, 1.08fr);
+    min-height: var(--globe-band);
+    background:
+      radial-gradient(ellipse 48% 72% at 74% 50%, var(--aeios-tint-regional), transparent 72%),
+      radial-gradient(ellipse 26% 40% at 74% 50%, var(--aeios-tint-live), transparent 74%),
+      linear-gradient(180deg, var(--aeios-surface-1) 0%, var(--aeios-canvas) 100%);
+  }
+
+  /* Two columns: keep the longest title word on one line in the copy column (about 0.46 of the hero minus padding). */
+  .globe-hero__title {
+    font-size: clamp(1.75rem, 6cqi - 0.6rem, 3.25rem);
+  }
+
+  .globe-hero__copy {
+    gap: var(--aeios-space-5);
+    padding: var(--aeios-space-12) var(--aeios-space-6) 0 var(--aeios-space-10);
+  }
+
+  .globe-hero__controls {
+    grid-area: controls;
+    align-self: start;
+    z-index: 1;
+    margin: var(--aeios-space-6) var(--aeios-space-6) var(--aeios-space-12) var(--aeios-space-10);
+  }
+
+  .globe-hero__control {
+    background: transparent;
+  }
+
+  .globe-hero__caption {
+    top: auto;
+    bottom: var(--aeios-space-3);
+  }
+
+  .globe-hero__stage {
+    height: 100%;
+    min-height: var(--globe-band);
+    max-height: none;
+  }
+
+  .globe-hero__letterbox {
+    left: -100vw; /* clipped by the hero's rounded overflow */
+    z-index: 0;
+  }
+}
+
+/* ---- reduced motion: no transitions, nothing hidden ---- */
+.globe-hero[data-reduced='true'] {
+  --globe-reveal-dur: 0.01ms;
+  --globe-reveal-step: 0ms;
+  --globe-bar-dur: 0.01ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-hero {
+    --globe-reveal-dur: 0.01ms;
+    --globe-reveal-step: 0ms;
+    --globe-bar-dur: 0.01ms;
+  }
+}
+
+@media (forced-colors: active) {
+  .globe-hero__title {
+    background: none;
+    -webkit-text-fill-color: currentcolor;
+  }
+}

@@ -1,0 +1,153 @@
+/*
+ * View stage and views (separate views with a cinematic transition). Tokens only.
+ * Motion itself is owned by Motion in ViewStage.tsx (opacity and transform); nothing here animates.
+ */
+
+/* The stage keeps a floor height so the footer does not jump up while a view is being swapped. */
+.view-stage {
+  position: relative;
+  min-height: 70vh;
+}
+
+.view-stage__frame {
+  transform-origin: 50% 0;
+}
+
+/*
+ * The accent scan line that sweeps across the top of the stage on a view change. Sticky so it is visible even when the
+ * outgoing view was scrolled; clipped by its own track so it can never widen the page.
+ */
+.view-stage__scanbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  height: 2px;
+  margin-bottom: -2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.view-stage__scan {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, var(--aeios-accent) 50%, transparent 100%);
+}
+
+/* A view heading receives focus programmatically on a view change; show the ring only for keyboard users. */
+.view-stage [data-view-heading]:focus:not(:focus-visible),
+.view-stage h1[tabindex='-1']:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.view-stage [data-view-heading]:focus-visible,
+.view-stage h1[tabindex='-1']:focus-visible {
+  outline: 2px solid var(--aeios-focus-ring);
+  outline-offset: var(--aeios-space-1);
+  border-radius: var(--aeios-radius-sm);
+}
+
+.view {
+  min-width: 0;
+}
+
+/* Separates a view's hero band from its first panel (outer spacing only; ViewHero owns its inner layout). */
+.view > .view-hero {
+  margin-bottom: var(--aeios-space-8);
+}
+
+/* Overview landing: facts and the call to action under the globe title. */
+.ov-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aeios-space-2);
+  margin: var(--aeios-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ov-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aeios-space-2);
+  min-height: var(--aeios-target-min);
+  max-width: 100%;
+  padding: 0 var(--aeios-space-3);
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: 999px;
+  background: var(--aeios-surface-1);
+  color: var(--aeios-text-secondary);
+  font: 500 var(--aeios-text-xs) / 1.3 var(--aeios-font-ui);
+}
+
+.ov-hero-chip svg {
+  flex: 0 0 auto;
+  color: var(--aeios-accent);
+}
+
+.ov-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aeios-space-2);
+  align-self: flex-start;
+  min-height: var(--aeios-target-touch);
+  margin-top: var(--aeios-space-5);
+  padding: 0 var(--aeios-space-5);
+  border: 1px solid var(--aeios-accent);
+  border-radius: var(--aeios-radius-md);
+  background: var(--aeios-accent);
+  color: var(--aeios-on-accent);
+  font: 600 var(--aeios-text-base) / 1.2 var(--aeios-font-ui);
+  cursor: pointer;
+  transition:
+    transform var(--aeios-dur-micro) var(--aeios-ease),
+    background-color var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.ov-hero-cta:hover {
+  transform: translateY(-1px);
+}
+
+.ov-hero-cta:focus-visible {
+  outline: 2px solid var(--aeios-focus-ring);
+  outline-offset: var(--aeios-space-1);
+}
+
+@media (width <= 680px) {
+  .view-stage {
+    min-height: 60vh;
+  }
+
+  .ov-hero-cta {
+    align-self: stretch;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/*
+ * A cached (stale) weather model run, stated in the hero band of every view that shows model data (the Overview states it in
+ * its currency strip). Static text: no motion, no live region.
+ */
+.view-model-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aeios-space-2);
+  max-width: 100%;
+  margin: 0;
+  padding: var(--aeios-space-2) var(--aeios-space-3);
+  border: 1px solid var(--aeios-status-warning);
+  border-radius: var(--aeios-radius-md);
+  background: var(--aeios-tint-warning);
+  color: var(--aeios-text-primary);
+  font: 500 var(--aeios-text-xs) / 1.35 var(--aeios-font-ui);
+}
+
+.view-model-notice svg {
+  flex: 0 0 auto;
+  color: var(--aeios-status-warning);
+}
+
+.view-model-notice b {
+  font-weight: 600;
+}

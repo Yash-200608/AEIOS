@@ -99,3 +99,96 @@ export async function settleFiniteAnimations(page: Page, timeout = 5_000): Promi
 }
 
 export const sleep = (page: Page, ms: number) => page.waitForTimeout(ms);
+
+// ------------------------------------------------------------------------------------------------------------ views
+
+/** The development preview (no sign-in) with the "normal" fixture. Append '#/<viewId>' for a deep link. */
+export const PREVIEW = '/?preview&fixture=normal';
+
+/** Navigation label of every view, in navigation order (must match src/shell/viewRegistry.ts). */
+export const VIEW_LABELS = {
+  overview: 'Overview',
+  'air-quality': 'Air quality',
+  dispersion: 'Pollution dispersion',
+  twin: '3D dispersion twin',
+  forecast: 'Forecast',
+  smoke: 'Smoke origin',
+  satellite: 'Satellite',
+  atmosphere: '3D atmosphere',
+  simulation: 'Simulation lab',
+  aeios: 'AEIOS model',
+  station: 'Station network',
+} as const;
+export type ViewKey = keyof typeof VIEW_LABELS;
+export const VIEW_KEYS = Object.keys(VIEW_LABELS) as ViewKey[];
+
+export const stage = (page: Page) => page.getByTestId('view-stage');
+
+/** Open the preview (optionally deep-linked to a view) and wait until that view is mounted and settled. */
+export async function openView(page: Page, view: ViewKey = 'overview'): Promise<void> {
+  await page.goto(view === 'overview' ? PREVIEW : `${PREVIEW}#/${view}`);
+  await expect(stage(page)).toHaveAttribute('data-view', view);
+  await expect(stage(page)).toHaveAttribute('data-view-state', 'idle', { timeout: 5_000 });
+}
+
+/** True when the sidebar is an off-canvas drawer (narrow layouts): the menu button is shown. */
+export const isCompact = (page: Page) => page.locator('.menu-button').isVisible();
+
+/**
+ * Open a view the way a user does: click its sidebar item, opening the drawer first on narrow layouts.
+ * Waits until the stage shows the view (not until its transition has finished).
+ */
+export async function navTo(page: Page, view: ViewKey): Promise<void> {
+  if (await isCompact(page)) {
+    await page.locator('.menu-button').click();
+    await expect(page.locator('#primary-nav')).toHaveClass(/is-open/);
+  }
+  await page.locator('#primary-nav').getByRole('button', { name: VIEW_LABELS[view], exact: true }).click();
+  await expect(stage(page)).toHaveAttribute('data-view', view);
+}
+
+/** Wait until the view transition has finished. */
+export const stageIdle = (page: Page, timeout = 5_000) => expect(stage(page)).toHaveAttribute('data-view-state', 'idle', { timeout });
+
+/** Every "aria-current:text" in the sidebar navigation (exactly one is expected). */
+export const currentNav = (page: Page) =>
+  page
+    .locator('#primary-nav [aria-current]')
+    .evaluateAll((els) => els.map((e) => `${e.getAttribute('aria-current')}:${e.textContent?.trim()}`));
+
+/**
+ * Bring the Overview's command center into view so its Mission Reveal starts (it waits below the globe landing), and wait
+ * until the reveal has finished. Also waits for the cached model run, which every Overview assertion depends on.
+ */
+export async function revealCommandCenter(page: Page, feed: RegExp | string = 'Cached model run'): Promise<void> {
+  const root = page.locator('#overview .cc');
+  await expect(page.locator('#overview .cc-currency')).toContainText(feed, { timeout: 15_000 });
+  // Late panels shift the layout, so scroll again until the reveal has started.
+  await expect(async () => {
+    await root.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await expect(root).toHaveAttribute('data-reveal-start', 'started', { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await expect(root).toHaveAttribute('data-reveal-state', 'done', { timeout: 3_000 });
+}
+
+/** A data update while the Overview stays mounted: the topbar's Refresh reloads the (cached) model run into new objects. */
+export async function refreshData(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Refresh weather data' }).click();
+}
+
+/**
+ * Collect uncaught page errors and console errors, ignoring failed resource loads: every Open-Meteo request is aborted by this
+ * fixture on purpose, and the dev preview has no backend, so "Failed to load resource" lines and the browser's CORS refusals of
+ * cloud functions called from 127.0.0.1 (e.g. the Smoke origin fire feed) are expected.
+ */
+export function collectProblems(page: Page): string[] {
+  const problems: string[] = [];
+  page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    if (/Failed to load resource|net::ERR_|has been blocked by CORS policy/.test(text)) return;
+    problems.push(`console.error: ${text.slice(0, 300)}`);
+  });
+  return problems;
+}

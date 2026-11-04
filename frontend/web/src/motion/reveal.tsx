@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { m, useAnimationControls, type HTMLMotionProps, type Variants } from 'motion/react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { inView, m, useAnimationControls, type HTMLMotionProps, type Variants } from 'motion/react';
 import { RotateCcw, SkipForward } from 'lucide-react';
 import { motionTokens, revealSchedule } from '../design/motion';
 import MotionReady from './MotionReady';
+import { RevealOnScroll } from './scroll';
 import { prefersReducedMotion, useMotionPolicy } from './useMotionPolicy';
 
 /*
@@ -19,9 +20,16 @@ import { prefersReducedMotion, useMotionPolicy } from './useMotionPolicy';
  *  - The state lives in this component, not in the polled data, so a 30 s poll can never replay it.
  *  - A failsafe forces the end state at 2.2 s, so content can never stay hidden if an animation does not complete.
  *  - Skip and Replay are always present; Skip is never disabled because that would drop keyboard focus.
+ *
+ * Start: `start="mount"` (default) plays on mount. `start="visible"` (the Overview under the globe landing) keeps the same hidden
+ * start state, decided the same way before first paint, but plays when the root's top edge has risen 20 % into the viewport
+ * (IntersectionObserver, margin-based so a root taller than the viewport, the Overview on a phone, still triggers). The failsafe
+ * counts from that moment; without IntersectionObserver it plays at once. While it waits, data-reveal-state is "playing" and
+ * data-reveal-start is "waiting"; Skip ends it and Replay plays it immediately, both cancelling the wait.
  */
 const SESSION_KEY = 'aeios:overview-reveal:v1';
 const FAILSAFE_MS = 2200;
+const VISIBLE_MARGIN = '0px 0px -20% 0px';
 
 type Spec = { opacity: number; y: number; delay: number; duration: number };
 export type RevealGroupName = 'currency' | 'assessment' | 'evidence' | 'outlook';
@@ -71,11 +79,23 @@ function markPlayed(): void {
   }
 }
 
-export function RevealRoot({ className, children }: { className?: string; children: ReactNode }) {
+export function RevealRoot({
+  className,
+  children,
+  start = 'mount',
+}: {
+  className?: string;
+  children: ReactNode;
+  start?: 'mount' | 'visible';
+}) {
   const { reduced } = useMotionPolicy();
   const [startHidden] = useState(() => !prefersReducedMotion() && !playedThisSession());
+  const [startMode] = useState(start); // fixed at mount: changing it later must not replay the reveal
+  const [waiting, setWaiting] = useState(() => startHidden && startMode === 'visible' && typeof IntersectionObserver !== 'undefined');
   const [state, setState] = useState<RevealState>(startHidden ? 'playing' : 'done');
   const controls = useAnimationControls();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const stopWaiting = useRef<(() => void) | null>(null);
   const token = useRef(0); // a superseded run (Skip, Replay, unmount) must not finish the current one
   const failsafe = useRef<number | undefined>(undefined);
 
@@ -108,19 +128,55 @@ export function RevealRoot({ className, children }: { className?: string; childr
     }, FAILSAFE_MS);
   }, [controls, finish, toEnd]);
 
+  const cancelWait = useCallback(() => {
+    stopWaiting.current?.();
+    stopWaiting.current = null;
+  }, []);
+
+  // The hidden start state, applied before the first paint. `initial="hidden"` on the groups is not enough on its own: under the
+  // view stage's <AnimatePresence initial={false}> (the first load) Motion skips every initial state, and the groups would show
+  // and then vanish when the reveal starts. Runs after the groups subscribed to `controls` (child layout effects run first).
+  useLayoutEffect(() => {
+    if (startHidden && !prefersReducedMotion()) controls.set('hidden');
+  }, [startHidden, controls]);
+
   useEffect(() => {
-    if (startHidden) play();
+    const el = rootRef.current;
+    if (startHidden) {
+      if (startMode === 'visible' && el && typeof IntersectionObserver !== 'undefined') {
+        stopWaiting.current = inView(
+          el,
+          () => {
+            cancelWait();
+            setWaiting(false);
+            if (prefersReducedMotion()) {
+              toEnd();
+              finish();
+            } else {
+              play();
+            }
+          },
+          { margin: VISIBLE_MARGIN, amount: 0 },
+        );
+      } else {
+        play();
+      }
+    }
     return () => {
+      cancelWait();
       token.current += 1;
       window.clearTimeout(failsafe.current);
       controls.stop();
     };
-  }, [startHidden, play, controls]);
+  }, [startHidden, startMode, play, toEnd, finish, cancelWait, controls]);
 
-  // Reduced motion switched on mid-play: jump to the end state (DOM in an effect, state during render).
+  // Reduced motion switched on mid-play or while waiting: jump to the end state (DOM in an effect, state during render).
   useEffect(() => {
-    if (reduced) toEnd();
-  }, [reduced, toEnd]);
+    if (reduced) {
+      cancelWait();
+      toEnd();
+    }
+  }, [reduced, toEnd, cancelWait]);
   const [seenReduced, setSeenReduced] = useState(reduced);
   if (reduced !== seenReduced) {
     setSeenReduced(reduced);
@@ -128,23 +184,32 @@ export function RevealRoot({ className, children }: { className?: string; childr
   }
 
   const skip = useCallback(() => {
+    cancelWait();
+    setWaiting(false);
     toEnd();
     finish();
-  }, [toEnd, finish]);
+  }, [toEnd, finish, cancelWait]);
   const replay = useCallback(() => {
     if (prefersReducedMotion()) {
       skip();
       return;
     }
+    cancelWait();
+    setWaiting(false);
     setState('playing');
     play();
-  }, [play, skip]);
+  }, [play, skip, cancelWait]);
 
   const shown: RevealState = reduced ? 'done' : state;
   return (
     <MotionReady>
       <RevealContext.Provider value={{ startHidden, controls, state: shown, skip, replay }}>
-        <div className={className} data-reveal-state={shown}>
+        <div
+          ref={rootRef}
+          className={className}
+          data-reveal-state={shown}
+          data-reveal-start={waiting && shown === 'playing' ? 'waiting' : 'started'}
+        >
           {children}
         </div>
       </RevealContext.Provider>
@@ -183,8 +248,9 @@ export function RevealCell({ index, ...rest }: { index: number } & LiProps) {
 }
 
 /**
- * One-time scroll entrance for a long lower section (opacity and 16 px, the first time 20% of it is on screen). Used only for
- * Regional context and Destinations, never per card. Because it is `once`, data arriving later cannot trigger it again.
+ * One-time scroll entrance for a long lower section. Used only for Regional context and Destinations, never per card. It is the
+ * same entrance every other view uses (RevealOnScroll: opacity and 24 px when its top edge comes into view, once, never hidden
+ * when it cannot run), so the Overview and the views move alike. Because it is once, data arriving later cannot trigger it again.
  * It exists only when the intro played this session (same once-per-session rule) and never under reduced motion; otherwise a plain div.
  */
 export function EnterOnce({ className, children }: { className?: string; children: ReactNode }) {
@@ -192,16 +258,9 @@ export function EnterOnce({ className, children }: { className?: string; childre
   const { reduced } = useMotionPolicy();
   if (!ctx || !ctx.startHidden || reduced) return <div className={className}>{children}</div>;
   return (
-    <m.div
-      className={className}
-      data-enter-once=""
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: motionTokens.duration.reveal, ease: [...motionTokens.ease.enter] }}
-    >
+    <RevealOnScroll className={className} data-enter-once="">
       {children}
-    </m.div>
+    </RevealOnScroll>
   );
 }
 

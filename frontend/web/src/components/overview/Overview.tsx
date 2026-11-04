@@ -129,7 +129,8 @@ export default function Overview(p: OverviewProps) {
 
   return (
     <section id="overview" className="page-section" aria-label="Overview">
-      <RevealRoot className="cc">
+      {/* The Overview sits below the globe landing, so its Mission Reveal waits until the command center scrolls into view. */}
+      <RevealRoot className="cc" start="visible">
         {fixtureName && (
           <div className="cc-dev" role="note"><AlertTriangle size={16} aria-hidden="true" /> <span><strong>Development fixture &quot;{fixtureName}&quot;.</strong> Illustrative state for visual checks, not real data. Not present in production builds.</span></div>
         )}

@@ -1,25 +1,16 @@
 /*
- * Step 3: focal shift on the column's height lanes, the one-time mixing-layer rise, scroll-following navigation with correct
- * aria-current, and one-time entrances for the two long lower Overview sections. No snapping, pinning or scroll hijacking.
+ * Step 3: focal shift on the column's height lanes, the one-time mixing-layer rise, and one-time entrances for the two long lower
+ * Overview sections. No snapping, pinning or scroll hijacking. (The old single-page scroll-following navigation is gone: each
+ * sidebar item now opens its own view, covered by views.spec.ts.)
  */
 import type { Page } from '@playwright/test';
-import { expect, test } from './support';
+import { expect, openView, refreshData, revealCommandCenter, test } from './support';
 
-const URL = '/?preview&fixture=normal';
 async function open(page: Page) {
-  await page.goto(URL);
+  await openView(page, 'overview');
   await expect(page.locator('#overview .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
 }
 const column = (page: Page) => page.locator('.cc-column').first();
-const activeNav = (page: Page) =>
-  page
-    .locator('#primary-nav button[aria-current]')
-    .evaluateAll((els) => els.map((e) => `${e.getAttribute('aria-current')}:${e.textContent?.trim()}`));
-const scrollToSection = (page: Page, id: string) =>
-  page.evaluate(
-    (i) => window.scrollTo({ top: document.getElementById(i)!.getBoundingClientRect().top + window.scrollY - 60, behavior: 'instant' }),
-    id,
-  );
 
 // ------------------------------------------------------------------------------------------------ B(2) focal shift
 test('focal shift: the focused height leads, the others recede, text and values are untouched', async ({ page }) => {
@@ -102,53 +93,10 @@ test.describe('reduced motion', () => {
   });
 });
 
-// ------------------------------------------------------------------------------------------------ C navigation
-test('the navigation follows the section being read; exactly one item has aria-current="location"', async ({ page }) => {
-  await open(page);
-  expect(await activeNav(page)).toEqual(['location:Overview']);
-  for (const [id, label] of [
-    ['forecast', 'Forecast'],
-    ['air-quality', 'Air quality'],
-    ['simulation', 'Simulation lab'],
-    ['atmosphere', '3D atmosphere'],
-    ['overview', 'Overview'],
-  ] as const) {
-    await scrollToSection(page, id);
-    await expect.poll(() => activeNav(page), { timeout: 3_000, message: `active item at #${id}` }).toEqual([`location:${label}`]);
-    await expect(page.locator('.breadcrumb b')).toHaveText(label);
-  }
-});
-
-test('the last section becomes active at the end of the page', async ({ page }) => {
-  await open(page);
-  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
-  await expect.poll(() => activeNav(page), { timeout: 3_000 }).toEqual(['location:Station network']);
-});
-
-test('clicking a destination moves the highlight straight to its target, without flickering through the sections on the way', async ({
-  page,
-}) => {
-  await open(page);
-  await page.evaluate(() => {
-    const w = window as unknown as { __seen: string[] };
-    w.__seen = [];
-    new MutationObserver(() => {
-      const cur = document.querySelector('#primary-nav button[aria-current]')?.textContent?.trim() ?? '';
-      if (w.__seen.at(-1) !== cur) w.__seen.push(cur);
-    }).observe(document.querySelector('#primary-nav')!, { attributes: true, subtree: true, attributeFilter: ['aria-current', 'class'] });
-  });
-  await page.locator('.cc-dest a', { hasText: 'Check the forecast' }).click();
-  await expect.poll(() => activeNav(page), { timeout: 5_000 }).toEqual(['location:Forecast']);
-  await page.waitForTimeout(1_200);
-  expect(await activeNav(page)).toEqual(['location:Forecast']);
-  const seen = await page.evaluate(() => (window as unknown as { __seen: string[] }).__seen);
-  expect(seen.filter((s) => s !== 'Forecast')).toEqual([]);
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType)).toBe('none');
-});
-
 // ------------------------------------------------------------------------------------------------ C entrances
 test('Regional context and Destinations enter once; nothing else does; data updates and re-scrolling never repeat it', async ({ page }) => {
   await open(page);
+  await revealCommandCenter(page);
   const once = page.locator('[data-enter-once]');
   await expect(once).toHaveCount(2);
   expect(await page.locator('#overview [data-enter-once] .cc-region, #overview [data-enter-once] .cc-dest').count()).toBe(2);
@@ -166,14 +114,7 @@ test('Regional context and Destinations enter once; nothing else does; data upda
     requestAnimationFrame(tick);
     window.scrollTo({ top: 0, behavior: 'instant' });
   });
-  await page
-    .locator('#atmosphere input[type="range"]')
-    .first()
-    .evaluate((el: HTMLInputElement) => {
-      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-      set.call(el, String(Number(el.value) + 3));
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+  await refreshData(page); // a data update while the Overview stays mounted
   await page.locator('.cc-region').scrollIntoViewIfNeeded();
   await page.waitForTimeout(800);
   expect(await page.evaluate(() => (window as unknown as { __min: number }).__min)).toBe(1);
@@ -183,7 +124,7 @@ test('Regional context and Destinations enter once; nothing else does; data upda
 
 test('a second visit in the same session shows the lower sections without any entrance', async ({ page }) => {
   await open(page);
-  await expect(page.locator('#overview .cc')).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
+  await revealCommandCenter(page);
   await page.reload();
   await expect(page.locator('#overview .cc')).toBeVisible();
   expect(await page.locator('[data-enter-once]').count()).toBe(0);

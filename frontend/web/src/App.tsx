@@ -1,30 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import {
-  Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays,
-  Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Compass,
-  Box, Droplets, Flame, Gauge, Globe2, Layers3, MapPin, Menu, Play, RadioTower, RefreshCw, Satellite,
-  ShieldCheck, Sun, Thermometer, Wind, X, Zap,
-} from 'lucide-react';
-import {
-  Area, AreaChart, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer,
-  Tooltip as ChartTooltip, XAxis, YAxis,
-} from 'recharts';
-import { useActiveSection } from './motion/useActiveSection';
+import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { Menu, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { scrollBehavior } from './motion/useMotionPolicy';
-import WeatherScene, { layerNorms, type SceneWeather } from './components/WeatherScene';
-import AreaMap from './components/AreaMap';
-import AeiosPanel from './components/AeiosPanel';
-import Overview from './components/overview/Overview';
-import ForecastPanel from './components/ForecastPanel';
-import { ventilation, VENTILATION_POOR } from './lib/derived';
-import DispersionPanel from './components/DispersionPanel';
-import DispersionTwin from './components/DispersionTwin';
-import SatellitePanel from './components/SatellitePanel';
-import SmokeTracerPanel from './components/SmokeTracerPanel';
-import { SmokeAlertHistory, SmokeBanner } from './components/SmokeAlerts';
-import { api, compass, formatDay, formatHour, numeric, round, weatherLabel, type SiteId, type WeatherPayload } from './lib/api';
+import { ScrollProgress } from './motion/scroll';
+import type { SceneWeather } from './components/WeatherScene';
+import { SmokeBanner } from './components/SmokeAlerts';
+import { api, type SiteId, type WeatherPayload } from './lib/api';
+import ViewStage from './shell/ViewStage';
+import { useViewRoute } from './shell/useViewRoute';
+import { focusViewHeading } from './shell/focusHeading';
+import { DEFAULT_VIEW, VIEW_ALIASES, VIEW_BY_ID, VIEW_GROUPS, VIEW_IDS, type ViewId } from './shell/viewRegistry';
+import OverviewView from './views/OverviewView';
+import AirQualityView from './views/AirQualityView';
+import ForecastView from './views/ForecastView';
+import AtmosphereView from './views/AtmosphereView';
+import SimulationView, { SIMULATION_OUTPUT_ID } from './views/SimulationView';
+import StationView from './views/StationView';
+import { AeiosView, DispersionView, SatelliteView, SmokeView, TwinView } from './views/PanelViews';
+import { ModelRunContext, type LoadState, type ModelRunState, type StationState } from './views/shared';
+import './shell/views.css';
 
-type LoadState = 'loading' | 'ready' | 'error';
 type Layer = SceneWeather['layer'];
 
 const SITES: Record<SiteId, { title: string; subtitle: string; lat: number; lon: number; code: string }> = {
@@ -32,85 +26,7 @@ const SITES: Record<SiteId, { title: string; subtitle: string; lat: number; lon:
   chandu: { title: 'Chandu village', subtitle: 'Gurugram · Haryana', lat: 28.475, lon: 76.9167, code: 'AEIOS-CHD-01' },
 };
 
-const NAV_LABEL: Record<string, string> = {
-  overview: 'Overview', dispersion: 'Pollution dispersion', twin: '3D dispersion twin', atmosphere: '3D atmosphere', forecast: 'Forecast', 'air-quality': 'Air quality',
-  satellite: 'Satellite', smoke: 'Smoke origin', simulation: 'Simulation lab', aeios: 'AEIOS model', station: 'Station network',
-};
 const COMPACT_QUERY = '(max-width: 980px)';
-const DAY_OPTIONS = [3, 4, 5, 7, 10, 15];
-const SCENARIOS = [
-  { value: 'dust_event', label: 'Dust / particulate episode', note: 'Elevated dust response and dry-air conditions' },
-  { value: 'heat_stress', label: 'Heat stress episode', note: 'Temperature increase and humidity reduction' },
-  { value: 'convective_storm', label: 'Convective storm', note: 'Cloud build-up, rainfall and gust response' },
-  { value: 'gust_front', label: 'Gust front', note: 'Rapid wind speed increase and direction shift' },
-  { value: 'baseline', label: 'Baseline replay', note: 'Replay the weather-model baseline without perturbation' },
-];
-
-/** A finite number, or null when the value is absent or not numeric (never a made-up 0). */
-function numOrNull(value: unknown): number | null {
-  const number = numeric(value, Number.NaN);
-  return Number.isFinite(number) ? number : null;
-}
-
-function hourlyAt(hourly: Record<string, unknown[]> | undefined, key: string, index: number): number | null {
-  const values = hourly?.[key];
-  return values && index >= 0 && index < values.length ? numOrNull(values[index]) : null;
-}
-
-/** Profile-card value: "n/a" for a missing model value. */
-function na(value: number | null | undefined, digits = 0): string {
-  return value == null ? 'n/a' : round(value, digits);
-}
-
-/*
- * Schematic altitude labels for the 3D scene: the scene's own normalised layer heights (layerNorms), nudged apart only as
- * far as needed so labels never overlap (min gap 13 % of the label column). Not a projection of the orbiting camera.
- */
-function altitudeLabelPositions(norms: number[]): number[] {
-  const gap = 0.13;
-  const order = norms.map((n, i) => i).sort((a, b) => norms[a] - norms[b]);
-  const pos = norms.slice();
-  order.forEach((idx, k) => { if (k > 0) pos[idx] = Math.max(pos[idx], pos[order[k - 1]] + gap); });
-  for (let k = order.length - 1; k >= 0; k -= 1) {
-    const ceiling = k === order.length - 1 ? 1 : pos[order[k + 1]] - gap;
-    pos[order[k]] = Math.max(0, Math.min(pos[order[k]], ceiling));
-  }
-  return pos;
-}
-
-function buildDailyRows(daily: Record<string, any[]> | undefined, days: number) {
-  if (!daily?.time) return [];
-  return daily.time.slice(0, days).map((time, i) => ({
-    date: String(time),
-    label: formatDay(String(time)),
-    max: numeric(daily.temperature_2m_max?.[i], 0),
-    min: numeric(daily.temperature_2m_min?.[i], 0),
-    rain: numeric(daily.precipitation_sum?.[i], 0),
-    rainChance: numeric(daily.precipitation_probability_max?.[i], 0),
-    wind: numeric(daily.wind_speed_10m_max?.[i], 0),
-    gust: numeric(daily.wind_gusts_10m_max?.[i], 0),
-    direction: numeric(daily.wind_direction_10m_dominant?.[i], 0),
-    uv: numeric(daily.uv_index_max?.[i], 0),
-    code: numeric(daily.weather_code?.[i], 3),
-    sunrise: String(daily.sunrise?.[i] || ''),
-    sunset: String(daily.sunset?.[i] || ''),
-  }));
-}
-
-function WeatherGlyph({ code, size = 18 }: { code: unknown; size?: number }) {
-  const c = numeric(code, 3);
-  if (c === 0) return <Sun size={size} className="weather-sun" />;
-  if ([1, 2].includes(c)) return <CloudSun size={size} className="weather-sun" />;
-  if ([45, 48].includes(c)) return <CloudFog size={size} />;
-  if ([51, 53, 55, 56, 57].includes(c)) return <CloudDrizzle size={size} />;
-  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(c)) return <CloudRain size={size} className="weather-rain" />;
-  if ([95, 96, 99].includes(c)) return <CloudLightning size={size} className="weather-rain" />;
-  return <Cloud size={size} />;
-}
-
-function SectionTitle({ kicker, title, right }: { kicker: string; title: string; right?: ReactNode }) {
-  return <div className="section-title"><div><div className="eyebrow">{kicker}</div><h2>{title}</h2></div>{right}</div>;
-}
 
 export default function App({ userEmail = '', onSignOut }: { userEmail?: string; onSignOut?: () => void }) {
   const [site, setSite] = useState<SiteId>('sgt');
@@ -120,7 +36,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const [forecastMeta, setForecastMeta] = useState<{ cached: boolean; stale: boolean; source: string; warning?: string } | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [aqWarning, setAqWarning] = useState('');
-  const [station, setStation] = useState<{ status: string; count: number; observations: any[]; note: string } | null>(null);
+  const [station, setStation] = useState<StationState>(null);
   const [hourIndex, setHourIndex] = useState(0);
   const [layer, setLayer] = useState<Layer>('wind');
   const [selectedDate, setSelectedDate] = useState('');
@@ -132,18 +48,26 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const [simBusy, setSimBusy] = useState(false);
   const [simError, setSimError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
-  const [nav, setNav] = useState('overview');
-  const lockNav = useActiveSection(Object.keys(NAV_LABEL), setNav); // the nav follows the section actually being read
+  // Each sidebar item is its own view with its own URL (#/station); Back and Forward move between views.
+  const route = useViewRoute<ViewId>(VIEW_IDS, DEFAULT_VIEW, VIEW_ALIASES);
+  const view = route.view;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [compact, setCompact] = useState(false);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const drawerWasOpen = useRef(false);
-  const [sceneReset, setSceneReset] = useState(0);
+  // A drawer closed by navigating hands focus to the new view's heading, not back to the menu button.
+  const drawerFocusToView = useRef(false);
+  const drawerOpenRef = useRef(drawerOpen);
+  drawerOpenRef.current = drawerOpen;
   const [scenePaused, setScenePaused] = useState(false);
 
+  // A cached (stale) weather model run is labelled in every view that shows model data, not only on the Overview.
+  const modelRun: ModelRunState = forecastMeta?.stale && loadState === 'ready' ? { fetchedAt: lastUpdated } : null;
+
   const siteConfig = SITES[site];
+  const otherSite = SITES[site === 'sgt' ? 'chandu' : 'sgt'];
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoadState('loading');
@@ -194,10 +118,22 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
     return () => mq.removeEventListener('change', on);
   }, []);
   useEffect(() => {
-    // Focus enters the drawer on open and returns to the menu button on close; never on first render.
+    // Focus enters the drawer on open and returns to the menu button on close; never on first render. A close caused by
+    // navigation leaves focus to the view stage, which moves it to the new view's heading.
     if (drawerOpen) { drawerWasOpen.current = true; closeBtnRef.current?.focus(); }
-    else if (drawerWasOpen.current) { drawerWasOpen.current = false; menuBtnRef.current?.focus({ preventScroll: true }); }
+    else if (drawerWasOpen.current) {
+      drawerWasOpen.current = false;
+      if (drawerFocusToView.current) drawerFocusToView.current = false;
+      else menuBtnRef.current?.focus({ preventScroll: true });
+    }
   }, [drawerOpen]);
+  const closeDrawerForNavigation = () => {
+    if (!drawerOpenRef.current) return;
+    drawerFocusToView.current = true;
+    setDrawerOpen(false);
+  };
+  // Back / Forward (or an in-app link) changed the view while the drawer was open.
+  useEffect(() => { closeDrawerForNavigation(); }, [view]);
   const trapDrawer = (e: KeyboardEvent) => {
     if (!compact || !drawerOpen) return;
     if (e.key === 'Escape') { setDrawerOpen(false); return; }
@@ -209,107 +145,10 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   };
 
-  const dailyRows = useMemo(() => buildDailyRows(weather?.daily as any, days), [weather, days]);
   const current = (weather?.current || {}) as Record<string, any>;
   const hourly = (weather?.hourly || {}) as Record<string, any[]>;
-  const simulationMetric = useMemo(() => {
-    if (!simulation) return null;
-    const first = simulation.timeline?.find((row: any) => row.scenario_active) || simulation.timeline?.[0];
-    if (simulation.scenario === 'dust_event') {
-      if (first?.baseline_pm2_5 != null) return { key: 'pm2_5', baseline: 'baseline_pm2_5', label: 'PM2.5 concentration · illustrative scenario', unit: 'µg/m³' };
-      return { key: 'dust_scenario_index', baseline: null, label: 'Dust scenario intensity · unitless', unit: 'index' };
-    }
-    if (simulation.scenario === 'convective_storm') return { key: 'precipitation', baseline: 'baseline_precipitation', label: 'Hourly precipitation response', unit: 'mm' };
-    if (simulation.scenario === 'gust_front') return { key: 'wind_speed_10m', baseline: 'baseline_wind_speed_10m', label: '10 m wind response', unit: 'm/s' };
-    return { key: 'temperature_2m', baseline: 'baseline_temperature_2m', label: '2 m temperature response', unit: '°C' };
-  }, [simulation]);
-  const simulationPeak = useMemo(() => {
-    if (!simulation || !simulationMetric) return null;
-    const values = simulation.timeline.map((row: any) => numeric(row[simulationMetric.key], 0));
-    return values.length ? Math.max(...values) : null;
-  }, [simulation, simulationMetric]);
   const selectedHour = Math.max(0, Math.min(hourIndex, (hourly.time?.length || 1) - 1));
   const selectedTime = String(hourly.time?.[selectedHour] || current.time || '');
-  const sceneRow = simulation?.timeline?.[Math.min(selectedHour, (simulation.timeline.length || 1) - 1)];
-  // Missing model values stay null (shown as "n/a", hidden in the scene); the only fallback is the current-conditions value.
-  const getValue = (key: string, fallback: number | null = null): number | null => (sceneRow && sceneRow[key] != null
-    ? numOrNull(sceneRow[key]) : hourlyAt(hourly, key, selectedHour)) ?? fallback;
-  // Nominal heights only place a pressure level in the scene when the model returns no geopotential height.
-  const pressureLayer = (hPa: number, nominal: number) => {
-    const geopotential = hourlyAt(hourly, `geopotential_height_${hPa}hPa`, selectedHour);
-    return {
-      label: `${hPa} hPa`, speed: getValue(`wind_speed_${hPa}hPa`), direction: getValue(`wind_direction_${hPa}hPa`),
-      altitude: geopotential ?? nominal, geopotential,
-      temperature: getValue(`temperature_${hPa}hPa`), humidity: getValue(`relative_humidity_${hPa}hPa`), cloud: getValue(`cloud_cover_${hPa}hPa`),
-    };
-  };
-
-  const sceneWeather: SceneWeather = {
-    windSpeed: getValue('wind_speed_10m', numOrNull(current.wind_speed_10m)),
-    windDirection: getValue('wind_direction_10m', numOrNull(current.wind_direction_10m)),
-    gust: getValue('wind_gusts_10m', numOrNull(current.wind_gusts_10m)),
-    temperature: getValue('temperature_2m', numOrNull(current.temperature_2m)),
-    cloudCover: getValue('cloud_cover', numOrNull(current.cloud_cover)),
-    cloudLow: getValue('cloud_cover_low'),
-    cloudMid: getValue('cloud_cover_mid'),
-    cloudHigh: getValue('cloud_cover_high'),
-    precipitation: getValue('precipitation', numOrNull(current.precipitation)),
-    layer,
-    scenarioActive: Boolean(sceneRow?.scenario_active),
-    dustLoading: numeric(sceneRow?.dust_scenario_index, 0), // no scenario row = no dust overlay
-    windLayers: [
-      { label: '10 m AGL', speed: getValue('wind_speed_10m'), direction: getValue('wind_direction_10m'), altitude: 10,
-        temperature: getValue('temperature_2m'), humidity: getValue('relative_humidity_2m'), cloud: getValue('cloud_cover') },
-      { label: '80 m AGL', speed: getValue('wind_speed_80m'), direction: getValue('wind_direction_80m'), altitude: 80,
-        temperature: getValue('temperature_80m') },
-      pressureLayer(950, 500),
-      pressureLayer(925, 800),
-      pressureLayer(850, 1500),
-      pressureLayer(700, 3000),
-      pressureLayer(500, 5600),
-    ],
-  };
-  const altitudeLabelPos = altitudeLabelPositions(layerNorms(sceneWeather.windLayers));
-
-  const next72 = useMemo(() => {
-    const n = Math.min(72, hourly.time?.length || 0);
-    const col = (k: string) => Array.from({ length: n }, (_, i) => numeric(hourly[k]?.[i], NaN)).filter(Number.isFinite);
-    const t = col('temperature_2m'), ch = col('precipitation_probability'), w = col('wind_speed_10m');
-    let poor = 0;
-    for (let i = 0; i < n; i += 1) { const v = ventilation(hourly, i); if (v !== null && v < VENTILATION_POOR) poor += 1; }
-    return {
-      hours: n, poor,
-      minT: t.length ? Math.round(Math.min(...t)) : '—', maxT: t.length ? Math.round(Math.max(...t)) : '—',
-      rain: round(col('precipitation').reduce((a, b) => a + b, 0), 1), chance: ch.length ? Math.round(Math.max(...ch)) : '—',
-      wind: w.length ? round(Math.max(...w), 1) : '—',
-    };
-  }, [hourly]);
-
-  const hourlyChart = useMemo(() => {
-    if (!hourly.time) return [];
-    return hourly.time.map((time, i) => ({
-      time: String(time),
-      hour: formatHour(String(time)),
-      temperature: numeric(hourly.temperature_2m?.[i], 0),
-      feels: numeric(hourly.apparent_temperature?.[i], 0),
-      rain: numeric(hourly.precipitation?.[i], 0),
-      rainChance: numeric(hourly.precipitation_probability?.[i], 0),
-      wind: numeric(hourly.wind_speed_10m?.[i], 0),
-      gust: numeric(hourly.wind_gusts_10m?.[i], 0),
-    })).filter((row) => !selectedDate || row.time.startsWith(selectedDate)).slice(0, 24);
-  }, [hourly, selectedDate]);
-
-  const airChart = useMemo(() => {
-    const airHourly = aq?.hourly as any;
-    if (!airHourly?.time) return [];
-    // Keys must match the chart dataKeys; hours past the CAMS horizon come back null and are dropped.
-    return airHourly.time.slice(0, 72).map((time: string, i: number) => ({
-      time: formatHour(time),
-      pm2_5: airHourly.pm2_5?.[i] ?? null,
-      pm10: airHourly.pm10?.[i] ?? null,
-      aqi: airHourly.us_aqi?.[i] ?? null,
-    })).filter((row: { pm2_5: number | null; pm10: number | null }) => row.pm2_5 !== null || row.pm10 !== null);
-  }, [aq]);
 
   const runSimulation = async () => {
     setSimBusy(true); setSimError('');
@@ -317,7 +156,8 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
       const result = await api.simulate({ site_id: site, scenario, intensity, duration_hours: duration, start_hour: scenarioStart });
       setSimulation(result);
       setHourIndex(scenarioStart);
-      document.getElementById('simulation')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Keep the response in sight (on narrow screens the output panel sits below the controls).
+      document.getElementById(SIMULATION_OUTPUT_ID)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     } catch (error) {
       setSimError(error instanceof Error ? error.message : 'Scenario run failed.');
     } finally { setSimBusy(false); }
@@ -325,21 +165,75 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
   const clearSimulation = () => setSimulation(null);
 
+  /** Open a view (Overview's destinations call this with a view id). */
   const navigate = (section: string) => {
-    lockNav(section);
-    setNav(section);
-    setDrawerOpen(false);
-    document.getElementById(section)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+    closeDrawerForNavigation();
+    route.navigate(section);
+  };
+  /** Sidebar item: opens the view, or, when it is already open, returns to its top and its heading. */
+  const openView = (id: ViewId) => {
+    closeDrawerForNavigation();
+    if (route.navigate(id)) return;
+    window.scrollTo({ top: 0, behavior: scrollBehavior() });
+    focusViewHeading(document.querySelector(`[data-view-id="${id}"]`));
+  };
+  const skipToContent = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault(); // keeps the view's route in the address bar instead of '#main-content'
+    document.getElementById('main-content')?.focus();
   };
 
-  const aqiCurrent = numeric((aq?.current as any)?.us_aqi, NaN);
-  const weatherUpdatedLabel = lastUpdated ? new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
-  const dailyChart = dailyRows.map((d) => ({ date: d.label, max: d.max, min: d.min, rain: d.rain }));
-  const currentDescription = weatherLabel(current.weather_code);
+  const renderView = (id: ViewId) => {
+    switch (id) {
+      case 'overview':
+        return (
+          <OverviewView
+            primary={{ name: siteConfig.title, lat: siteConfig.lat, lon: siteConfig.lon }}
+            secondary={{ name: otherSite.title, lat: otherSite.lat, lon: otherSite.lon }}
+            overview={{
+              site, title: siteConfig.title, subtitle: siteConfig.subtitle, lat: siteConfig.lat, lon: siteConfig.lon,
+              loadState, forecastMeta, lastUpdated, current, hourly, selectedHour, selectedTime,
+              aq, aqWarning, onRetry: () => void load(), onNavigate: navigate,
+            }}
+          />
+        );
+      case 'air-quality':
+        return <AirQualityView aq={aq} aqWarning={aqWarning} />;
+      case 'dispersion':
+        return <DispersionView hourly={hourly} index={selectedHour} />;
+      case 'twin':
+        return <TwinView />;
+      case 'forecast':
+        return <ForecastView daily={weather?.daily as any} hourly={hourly} days={days} onDays={setDays} selectedDate={selectedDate} onSelectDate={setSelectedDate} onSelectHour={setHourIndex} />;
+      case 'smoke':
+        return <SmokeView site={site} />;
+      case 'satellite':
+        return <SatelliteView site={site} />;
+      case 'atmosphere':
+        return (
+          <AtmosphereView
+            siteTitle={siteConfig.title} current={current} hourly={hourly} selectedHour={selectedHour} selectedTime={selectedTime}
+            onSelectHour={setHourIndex} simulation={simulation} onClearSimulation={clearSimulation}
+            layer={layer} onLayer={setLayer} paused={scenePaused} onTogglePaused={() => setScenePaused((p) => !p)}
+          />
+        );
+      case 'simulation':
+        return (
+          <SimulationView
+            scenario={scenario} onScenario={setScenario} intensity={intensity} onIntensity={setIntensity}
+            duration={duration} onDuration={setDuration} start={scenarioStart} onStart={setScenarioStart}
+            busy={simBusy} error={simError} loadState={loadState} simulation={simulation} onRun={() => void runSimulation()}
+          />
+        );
+      case 'aeios':
+        return <AeiosView />;
+      case 'station':
+        return <StationView station={station} site={site} onSite={setSite} />;
+    }
+  };
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content" onClick={skipToContent}>Skip to content</a>
       {drawerOpen && <div className="drawer-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
       <aside
         id="primary-nav" ref={sidebarRef} className={`sidebar ${drawerOpen ? 'is-open' : ''}`} aria-label="Primary navigation" onKeyDown={trapDrawer}
@@ -350,29 +244,16 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <div className="brand-mark"><span /><span /><span /></div>
           <div><div className="brand-name">AEIOS<span> / SENTINEL</span></div><div className="brand-caption">ENVIRONMENTAL INTELLIGENCE</div></div>
         </div>
-        <div className="side-group-label">MONITOR</div>
-        <nav className="side-nav" aria-label="Monitor">
-          <button className={nav === 'overview' ? 'active' : ''} aria-current={nav === 'overview' ? 'location' : undefined} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
-          <button className={nav === 'air-quality' ? 'active' : ''} aria-current={nav === 'air-quality' ? 'location' : undefined} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
-          <button className={nav === 'dispersion' ? 'active' : ''} aria-current={nav === 'dispersion' ? 'location' : undefined} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Pollution dispersion</button>
-          <button className={nav === 'twin' ? 'active' : ''} aria-current={nav === 'twin' ? 'location' : undefined} onClick={() => navigate('twin')}><Box size={17} /> 3D dispersion twin</button>
-        </nav>
-        <div className="side-group-label">EXPLORE</div>
-        <nav className="side-nav" aria-label="Explore">
-          <button className={nav === 'forecast' ? 'active' : ''} aria-current={nav === 'forecast' ? 'location' : undefined} onClick={() => navigate('forecast')}><CalendarDays size={17} /> Forecast</button>
-          <button className={nav === 'smoke' ? 'active' : ''} aria-current={nav === 'smoke' ? 'location' : undefined} onClick={() => navigate('smoke')}><Flame size={17} /> Smoke origin</button>
-          <button className={nav === 'satellite' ? 'active' : ''} aria-current={nav === 'satellite' ? 'location' : undefined} onClick={() => navigate('satellite')}><Satellite size={17} /> Satellite</button>
-          <button className={nav === 'atmosphere' ? 'active' : ''} aria-current={nav === 'atmosphere' ? 'location' : undefined} onClick={() => navigate('atmosphere')}><Globe2 size={17} /> 3D atmosphere</button>
-        </nav>
-        <div className="side-group-label">TOOLS</div>
-        <nav className="side-nav" aria-label="Tools">
-          <button className={nav === 'simulation' ? 'active' : ''} aria-current={nav === 'simulation' ? 'location' : undefined} onClick={() => navigate('simulation')}><Layers3 size={17} /> Simulation lab</button>
-        </nav>
-        <div className="side-group-label">INFRASTRUCTURE</div>
-        <nav className="side-nav" aria-label="Infrastructure">
-          <button className={nav === 'aeios' ? 'active' : ''} aria-current={nav === 'aeios' ? 'location' : undefined} onClick={() => navigate('aeios')}><Zap size={17} /> AEIOS model</button>
-          <button className={nav === 'station' ? 'active' : ''} aria-current={nav === 'station' ? 'location' : undefined} onClick={() => navigate('station')}><RadioTower size={17} /> Station network</button>
-        </nav>
+        {VIEW_GROUPS.map(({ group, label, views }) => (
+          <Fragment key={group}>
+            <div className="side-group-label">{group}</div>
+            <nav className="side-nav" aria-label={label}>
+              {views.map(({ id, label: name, icon: Icon }) => (
+                <button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => openView(id)}><Icon size={17} aria-hidden="true" /> {name}</button>
+              ))}
+            </nav>
+          </Fragment>
+        ))}
         <div className="sidebar-divider" />
         <div className="side-group-label">OBSERVATION ZONES</div>
         <button className={`site-link ${site === 'sgt' ? 'selected' : ''}`} onClick={() => setSite('sgt')}><span className="site-dot sgt-dot" /><span><b>SGT University</b><small>Budhera campus</small></span></button>
@@ -389,10 +270,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
       </aside>
 
       <main id="main-content" tabIndex={-1} className="main-content" aria-hidden={compact && drawerOpen ? true : undefined}>
+        <ScrollProgress />
         <header className="topbar">
           <div className="topbar-left">
             <button ref={menuBtnRef} className="menu-button" aria-label="Open navigation" aria-expanded={drawerOpen} aria-controls="primary-nav" onClick={() => setDrawerOpen(true)}><Menu size={20} aria-hidden="true" /></button>
-            <div className="breadcrumb"><span>AEIOS</span><i>/</i><b aria-current="page">{NAV_LABEL[nav] ?? 'Overview'}</b></div>
+            <div className="breadcrumb"><span>AEIOS</span><i>/</i><b aria-current="page">{VIEW_BY_ID[view].label}</b></div>
           </div>
           <div className="topbar-actions">
             <span className="timezone-chip">IST · UTC+05:30</span>
@@ -403,191 +285,9 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
 
         <SmokeBanner />
 
-        <Overview
-          site={site} title={siteConfig.title} subtitle={siteConfig.subtitle} lat={siteConfig.lat} lon={siteConfig.lon}
-          loadState={loadState} forecastMeta={forecastMeta} lastUpdated={lastUpdated}
-          current={current} hourly={hourly} selectedHour={selectedHour} selectedTime={selectedTime}
-          aq={aq} aqWarning={aqWarning} onRetry={() => void load()} onNavigate={navigate}
-        />
-
-        <p className="specialist-divider"><span>Specialist analysis</span> Each section below goes deeper into one question.</p>
-        <DispersionPanel hourly={hourly} index={selectedHour} />
-
-        <DispersionTwin />
-
-        <section id="atmosphere" className="page-section">
-          <SectionTitle kicker="ATMOSPHERIC FIELD VISUALIZATION" title="3D weather environment" right={<div className="model-status"><span className="status-led" /> REGIONAL MODEL FIELD</div>} />
-          <div className="atmosphere-card">
-            <div className="atmosphere-head">
-              <div><div className="panel-title">Atmospheric volume · {siteConfig.title}</div><div className="panel-subtitle">Wind vectors, cloud layers and surface conditions · forecast-derived</div></div>
-              <div className="layer-switcher" role="group" aria-label="Atmospheric layer">
-                {([{ value: 'wind', label: 'Wind' }, { value: 'cloud', label: 'Cloud' }, { value: 'temperature', label: 'Thermal' }, { value: 'rain', label: 'Rain' }] as const).map((item) => <button key={item.value} onClick={() => setLayer(item.value)} className={layer === item.value ? 'selected' : ''}>{item.label}</button>)}
-              </div>
-            </div>
-            <div className="scene-frame">
-              <WeatherScene weather={sceneWeather} paused={scenePaused} resetSignal={sceneReset} />
-              <div className="scene-tag scene-tag-top"><span className="status-led" /> 3D MODEL VIEW · {simulation ? 'SCENARIO OVERLAY' : 'FORECAST FIELD'}</div>
-              <div className="scene-tag scene-tag-bottom"><span className="scene-key"><i className="key-wind" /> WIND PARTICLES</span><span className="scene-key"><i className="key-cloud" /> CLOUD LAYERS</span><span className="scene-key"><i className="key-site" /> STATION SITES</span><span className="scene-gesture">DRAG / SWIPE TO ROTATE · SCROLL / PINCH TO ZOOM</span></div>
-              <div style={{ position: 'absolute', right: 12, top: 44, zIndex: 3, display: 'flex', gap: 8 }}><button className="scene-reset" style={{ position: 'static' }} aria-pressed={scenePaused} aria-label={scenePaused ? 'Resume 3D scene' : 'Pause 3D scene'} onClick={() => setScenePaused((p) => !p)}>{scenePaused ? 'Resume' : 'Pause'}</button><button className="scene-reset" style={{ position: 'static' }} onClick={() => setSceneReset((n) => n + 1)}>Reset view</button></div>
-              <div className="scene-altitude" aria-hidden="true"><span className="scene-altitude-note">SCHEMATIC HEIGHTS</span><ol>{sceneWeather.windLayers.map((l, i) => <li key={l.label} className={l.speed == null || l.direction == null ? 'missing' : undefined} style={{ bottom: `${altitudeLabelPos[i] * 100}%` }}>{l.label}{l.speed == null || l.direction == null ? ' · n/a' : ''}</li>)}</ol></div>
-            </div>
-            <div className="scene-controls">
-              <div className="timeline-label"><b>{selectedTime ? formatDay(selectedTime.slice(0, 10), { weekday: 'short', day: 'numeric', month: 'short' }) : 'Forecast'}</b><span>{formatHour(selectedTime)}</span></div>
-              <input aria-label="Forecast hour" type="range" min={0} max={Math.min(71, Math.max(0, (hourly.time?.length || 1) - 1))} value={selectedHour} onChange={(e) => setHourIndex(Number(e.target.value))} />
-              <div className="timeline-actions"><span>+0h</span><span>+24h</span><span>+48h</span><span>+72h</span><button onClick={clearSimulation} disabled={!simulation}>Clear scenario</button></div>
-            </div>
-            {simulation && <div className="scenario-active-note"><Zap size={14} /> Scenario overlay active: {simulation.scenario_label}. These are controlled perturbations, not forecast updates. <button onClick={clearSimulation}>Return to model</button></div>}
-            <div className="profile-heading"><b>VERTICAL WIND PROFILE</b><span>m AGL = metres above ground level. hPa = air-pressure level, not a height; its geopotential height is the model's height for that pressure surface.</span></div>
-            <div className="vertical-profile-grid">
-              {sceneWeather.windLayers.map((windLayer) => <div key={windLayer.label}><span>{windLayer.label.toUpperCase()}</span><b>{na(windLayer.speed, 1)}{windLayer.speed != null && <> <small>m/s</small></>}</b><em>{na(windLayer.temperature, 1)}{windLayer.temperature != null ? '°C' : ''} · {na(windLayer.humidity)}{windLayer.humidity != null ? '%' : ''} RH</em>{windLayer.label.includes('hPa') && <em>Geopotential {windLayer.geopotential != null ? `${round(windLayer.geopotential)} m` : 'n/a'}</em>}</div>)}
-            </div>
-            <div className="visualization-disclaimer"><AlertTriangle size={13} /> 3D view uses forecast wind vectors at near-surface heights and 950–500 hPa pressure levels, cloud-layer coverage and precipitation. Pressure-level heights vary with weather; geopotential height is used when returned. This is a model-field visualization, not a CFD solver, radar or direct upper-air sounding.</div>
-          </div>
-        </section>
-
-        <section id="forecast" className="page-section">
-          <SectionTitle kicker="NUMERICAL WEATHER PREDICTION" title="Extended forecast" right={<div className="range-switch">{DAY_OPTIONS.map((d) => <button key={d} onClick={() => setDays(d)} className={days === d ? 'active' : ''}>{d}d</button>)}</div>} />
-          <div className="next72" aria-label="Next 72 hours summary">
-            <div className="sp-label">NEXT 72 HOURS · REGIONAL MODEL</div>
-            <div className="next72-grid">
-              <div><span>Temperature</span><b>{next72.minT}–{next72.maxT}<small>°C</small></b></div>
-              <div><span>Rain amount</span><b>{next72.rain}<small>mm</small></b></div>
-              <div><span>Peak rain chance</span><b>{next72.chance}<small>%</small></b></div>
-              <div><span>Peak wind</span><b>{next72.wind}<small>m/s</small></b></div>
-              <div><span>Poor-dispersion hours</span><b>{next72.poor}<small>of {next72.hours} h</small></b></div>
-            </div>
-          </div>
-          <div className="forecast-layout">
-            <div className="panel forecast-chart-panel">
-              <div className="panel-header"><div><div className="panel-title">Temperature outlook</div><div className="panel-subtitle">Daily maximum and minimum · °C</div></div><span className="legend-inline"><i className="legend-max" /> High <i className="legend-min" /> Low</span></div>
-              {dailyChart.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={dailyChart} margin={{ top: 12, right: 4, left: -20, bottom: 2 }}>
-                <defs><linearGradient id="tempHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e9ad69" stopOpacity={0.23} /><stop offset="100%" stopColor="#e9ad69" stopOpacity={0} /></linearGradient></defs>
-                <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
-                <Area dataKey="max" type="monotone" stroke="#efb36e" fill="url(#tempHigh)" strokeWidth={2.1} name="Maximum" />
-                <Line dataKey="min" type="monotone" stroke="#00e5ff" strokeWidth={2} dot={false} name="Minimum" />
-              </ComposedChart></ResponsiveContainer></div> : <div className="empty-chart">Waiting for forecast values…</div>}
-            </div>
-            <div className="panel precipitation-panel">
-              <div className="panel-title">Rain chance vs amount</div><div className="panel-subtitle">Bars: highest chance of rain that day (%). This is not how much will fall; amounts are in the table below.</div>
-              <div className="rain-bars">{dailyRows.slice(0, 8).map((d) => <div className="rain-bar-item" key={d.date}><div className="rain-bar-track"><div className="rain-bar-fill" style={{ height: `${Math.max(2, d.rainChance)}%` }} /></div><b>{Math.round(d.rainChance)}%</b><span>{d.date.slice(5).replace('-', '/')}</span></div>)}</div>
-              <div className="rain-total"><CloudRain size={17} /><span>Forecast rainfall</span><b>{round(dailyRows.slice(0, 3).reduce((sum, d) => sum + d.rain, 0), 1)} mm</b><small>Next 72 hours · total amount, a different measure from chance</small></div>
-            </div>
-          </div>
-          <div className="panel hourly-panel">
-            <div className="panel-header"><div><div className="panel-title">Hourly conditions</div><div className="panel-subtitle">{selectedDate ? formatDay(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Select a forecast day'} · 24-hour profile</div></div><div className="day-select">{dailyRows.slice(0, 5).map((d) => <button key={d.date} className={selectedDate === d.date ? 'active' : ''} onClick={() => setSelectedDate(d.date)}>{formatDay(d.date, { weekday: 'short', day: 'numeric' })}</button>)}</div></div>
-            {hourlyChart.length ? <div className="chart-wrap hourly-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={hourlyChart} margin={{ top: 10, right: 8, left: -20, bottom: 2 }}>
-              <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} />
-              <XAxis dataKey="hour" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={3} />
-              <YAxis yAxisId="temp" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft', fill: '#b3a8c0', fontSize: 10, dx: 22 }} />
-              <YAxis yAxisId="rain" orientation="right" domain={[0, 100]} tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} label={{ value: 'Rain chance (%)', angle: 90, position: 'insideRight', fill: '#b3a8c0', fontSize: 10, dx: -22 }} />
-              <ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
-              <Area yAxisId="temp" dataKey="temperature" type="monotone" stroke="#eab16e" fill="#eab16e" fillOpacity={0.1} name="Temperature °C" />
-              <Line yAxisId="temp" dataKey="feels" type="monotone" stroke="#00e5ff" strokeWidth={1.8} dot={false} name="Feels like °C" />
-              <Line yAxisId="rain" dataKey="rainChance" type="monotone" stroke="#b889ed" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="Rain chance %" /><Legend verticalAlign="top" height={24} iconType="plainline" wrapperStyle={{ fontSize: 11, color: '#b3a8c0' }} />
-            </ComposedChart></ResponsiveContainer></div> : <div className="empty-chart">Hourly profile unavailable.</div>}
-          </div>
-          <div className="panel outlook-panel">
-            <div className="panel-header"><div><div className="panel-title">{days}-day weather outlook</div><div className="panel-subtitle">Regional numerical model · daily summary</div></div><span className="source-badge">OPEN-METEO MODEL</span></div>
-            <div className="outlook-table-wrap"><table className="outlook-table"><thead><tr><th>DAY</th><th>CONDITIONS</th><th>TEMP RANGE</th><th>RAIN CHANCE</th><th>RAIN</th><th>WIND MAX</th><th>UV MAX</th></tr></thead><tbody>
-              {dailyRows.map((d, i) => <tr key={d.date} className={selectedDate === d.date ? 'selected-row' : ''} onClick={() => { setSelectedDate(d.date); const idx = (hourly.time || []).findIndex((t: string) => t.startsWith(d.date)); if (idx >= 0) setHourIndex(idx); }}>
-                <td><b>{i === 0 ? 'Today' : d.label}</b><small>{d.date}</small></td><td><span className="condition-cell"><WeatherGlyph code={d.code} size={17} /> {weatherLabel(d.code)}</span></td><td><b>{Math.round(d.max)}°</b><span className="muted-temp"> / {Math.round(d.min)}°</span></td><td>{Math.round(d.rainChance)}%</td><td>{d.rain.toFixed(1)} mm</td><td>{d.wind.toFixed(1)} m/s</td><td>{d.uv.toFixed(1)}</td>
-              </tr>)}
-            </tbody></table></div>
-            <div className="table-footnote">Weather forecast available up to 16 days. Daily model values are estimates and can change as forecast runs update.</div>
-          </div>
-        </section>
-
-        <section id="air-quality" className="page-section">
-          <SectionTitle kicker="ATMOSPHERIC COMPOSITION" title="Air quality intelligence" right={<span className="source-badge">CAMS GLOBAL MODEL · ~45 KM · ABOUT 5 DAYS</span>} />
-          <div className="air-grid">
-            <div className="panel aqi-panel">
-              <span className="provenance-tag prov-model">REGIONAL MODEL ESTIMATE</span><div className="panel-title">Regional air quality · CAMS · ~45 km grid · 3-hourly</div><div className="panel-subtitle">Not a station observation and not measured at this site</div>
-              <div className="aqi-score-row"><div className="aqi-score">{Number.isFinite(aqiCurrent) ? Math.round(aqiCurrent) : '—'}</div><div><b>US AQI (modelled)</b><span>{Number.isFinite(aqiCurrent) ? (aqiCurrent <= 50 ? 'Good' : aqiCurrent <= 100 ? 'Moderate' : aqiCurrent <= 150 ? 'Unhealthy for sensitive groups' : aqiCurrent <= 200 ? 'Unhealthy' : 'Very unhealthy') : 'Model data unavailable'}</span></div></div>
-              <div className="aqi-scale"><i /><i /><i /><i /><i /></div><div className="aqi-scale-labels"><span>Good</span><span>Moderate</span><span>US AQI scale</span></div>
-              {aqWarning && <div className="aq-warning"><AlertTriangle size={13} /> {aqWarning}</div>}
-              <div className="local-compare"><span className="provenance-tag prov-local">AEIOS STATION MEASUREMENT</span><span>Local PM2.5 is reported in Site status and in AEIOS sensors. If it says "No current reading", nothing on this panel replaces it.</span></div><div className="aq-note">MQ135 is a relative gas-response sensor, not a calibrated pollutant analyser; do not read its output as ppm of any gas.</div>
-            </div>
-            <div className="panel aq-chart-panel">
-              <div className="panel-header"><div><div className="panel-title">Particulate forecast profile</div><div className="panel-subtitle">PM2.5 and PM10 · µg/m³ · first 72 hours</div></div><span className="legend-inline"><i className="legend-pm25" /> PM2.5 <i className="legend-pm10" /> PM10</span></div>
-              {airChart.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={airChart} margin={{ top: 12, right: 4, left: -20, bottom: 2 }}>
-                <defs><linearGradient id="pm25Fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#00e5ff" stopOpacity={0.24} /><stop offset="100%" stopColor="#00e5ff" stopOpacity={0} /></linearGradient></defs>
-                <CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="time" tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={11} /><YAxis tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} /><ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} />
-                <Area dataKey="pm2_5" type="monotone" stroke="#00e5ff" fill="url(#pm25Fill)" strokeWidth={2} name="PM2.5" /><Line dataKey="pm10" type="monotone" stroke="#a77bf0" strokeWidth={1.7} dot={false} name="PM10" />
-              </ComposedChart></ResponsiveContainer></div> : <div className="empty-chart">Waiting for external air-quality model feed…</div>}
-            </div>
-          </div>
-          <div className="panel" style={{ marginTop: 12 }}>
-            <div className="panel-header"><div><div className="panel-title">Other pollutants · model now</div><div className="panel-subtitle">CAMS global estimates for this grid cell · µg/m³ unless noted</div></div><span className="source-badge">EXTERNAL_AIR_QUALITY_MODEL</span></div>
-            <div className="extra-grid">
-              {([
-                ['carbon_monoxide', 'Carbon monoxide (CO)', 'µg/m³', 'Combustion and smoke tracer'],
-                ['nitrogen_dioxide', 'Nitrogen dioxide (NO₂)', 'µg/m³', 'Traffic and industry'],
-                ['sulphur_dioxide', 'Sulphur dioxide (SO₂)', 'µg/m³', 'Coal and diesel burning'],
-                ['ozone', 'Ozone (O₃)', 'µg/m³', 'Forms in afternoon sunlight'],
-                ['dust', 'Dust', 'µg/m³', 'Wind-blown mineral dust'],
-                ['aerosol_optical_depth', 'Aerosol optical depth', '', 'Column haze (compare with Satellite)'],
-              ] as const).map(([key, label, unit, hint]) => {
-                const v = (aq?.current as any)?.[key];
-                return <div key={key} className="extra-item"><span>{label}</span><b>{v === null || v === undefined ? '—' : round(v, key === 'aerosol_optical_depth' ? 2 : 0)}<small>{unit}</small></b><em>{hint}</em></div>;
-              })}
-            </div>
-          </div>
-        </section>
-
-        <SatellitePanel site={site} />
-
-        <SmokeTracerPanel site={site} />
-
-        <section id="simulation" className="page-section">
-          <SectionTitle kicker="DIGITAL TWIN · WHAT-IF ANALYSIS" title="Weather scenario laboratory" right={<span className="simulation-badge"><Zap size={12} /> SIMULATION ONLY</span>} />
-          <div className="sim-banner" role="note"><Zap size={14} /> <b>Simulation only.</b> A deterministic what-if perturbation. It is not a new observation or a validated forecast, and it never changes official forecast data, sensor observations or trained-model predictions.</div>
-          <div className="simulation-layout">
-            <div className="panel simulation-controls">
-              <div className="panel-title">Configure an event</div><div className="panel-subtitle">Perturb the numerical forecast baseline to explore environmental response.</div>
-              <label className="field-label" htmlFor="scenario-select">SCENARIO TYPE</label>
-              <select id="scenario-select" value={scenario} onChange={(e) => setScenario(e.target.value)}>{SCENARIOS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
-              <div className="field-description">{SCENARIOS.find((s) => s.value === scenario)?.note}</div>
-              <div className="range-field"><div><label htmlFor="intensity-range">EVENT INTENSITY</label><b>{Math.round(intensity * 100)}%</b></div><input id="intensity-range" type="range" min="10" max="100" value={Math.round(intensity * 100)} onChange={(e) => setIntensity(Number(e.target.value) / 100)} /></div>
-              <div className="range-field"><div><label htmlFor="duration-range">EVENT DURATION</label><b>{duration} hours</b></div><input id="duration-range" type="range" min="1" max="24" value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></div>
-              <div className="range-field"><div><label htmlFor="start-range">START AFTER</label><b>{scenarioStart} hours</b></div><input id="start-range" type="range" min="0" max="48" value={scenarioStart} onChange={(e) => setScenarioStart(Number(e.target.value))} /></div>
-              <button className="primary-button" onClick={() => void runSimulation()} disabled={simBusy || loadState !== 'ready'}><Play size={15} fill="currentColor" /> {simBusy ? 'Running scenario…' : 'Run scenario simulation'}</button>
-              {simError && <div className="error-text">{simError}</div>}
-              <div className="simulation-method"><ShieldCheck size={14} /><span>Deterministic scenario perturbation. Does not alter official forecast data, sensor observations or trained-model predictions.</span></div>
-            </div>
-            <div className="panel simulation-output">
-              <div className="panel-header"><div><div className="panel-title">Scenario response · simulated</div><div className="panel-subtitle">Model baseline vs perturbed scenario · not an official forecast</div></div>{simulation && <span className="simulation-badge">RESULT GENERATED</span>}</div>
-              {simulation ? <>
-                <div className="simulation-result-head"><div><span>ACTIVE SCENARIO</span><b>{simulation.scenario_label}</b></div><div><span>EVENT WINDOW</span><b>{simulation.duration_hours} h · +{simulation.start_hour} h</b></div><div><span>PEAK {simulationMetric?.unit?.toUpperCase()}</span><b>{simulationPeak == null ? '—' : round(simulationPeak, 1)}</b></div></div>
-                <div className="sim-metric-label">{simulationMetric?.label}</div>
-                <div className="chart-wrap sim-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={simulation.timeline.slice(0, 36)} margin={{ top: 12, right: 8, left: -18, bottom: 2 }}><CartesianGrid stroke="#443753" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="time" tickFormatter={(v) => formatHour(v)} tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} interval={5} /><YAxis tick={{ fill: '#9c8baf', fontSize: 10 }} axisLine={false} tickLine={false} /><ChartTooltip contentStyle={{ background: '#100a17', border: '1px solid #473a57', borderRadius: 10, color: '#f1eff4' }} labelFormatter={(v) => String(v)} />{simulationMetric?.baseline && <Line dataKey={simulationMetric.baseline} name="Model baseline" stroke="#a797b9" strokeDasharray="4 4" dot={false} /> }<Line dataKey={simulationMetric?.key || 'temperature_2m'} name="Scenario" stroke="#eab16e" strokeWidth={2} dot={false} /></ComposedChart></ResponsiveContainer></div>
-                <div className="simulation-method"><AlertTriangle size={14} /> {simulation.method} {simulation.pollution_note ? ` ${simulation.pollution_note}` : ''}</div>
-              </> : <div className="simulation-empty"><div className="simulation-orbit"><Layers3 size={32} /></div><b>Not run yet</b><span>Choose an event, intensity, duration and start time, then press Run. You will see the simulated response against the model baseline, plus a peak value for the event window.</span><div className="scenario-pills"><span>DUST</span><span>HEAT</span><span>STORM</span><span>GUST FRONT</span></div></div>}
-            </div>
-          </div>
-        </section>
-
-        <AeiosPanel />
-
-        <ForecastPanel />
-
-        <section id="station" className="page-section">
-          <SectionTitle kicker="GROUND-TRUTH NETWORK" title="Station observations & site map" right={<span className={`status-chip ${station?.status === 'LIVE' ? 'status-live' : ''}`}><span className="status-led" /> {station?.status || 'CHECKING STATION'}</span>} />
-          <div className="station-layout">
-            <div className="panel station-map-panel">
-              <div className="panel-header"><div><div className="panel-title">SGT · Chandu observation area</div><div className="panel-subtitle">Reference locations · approx. 1.29 km apart</div></div><span className="source-badge">OSM BASE MAP</span></div>
-              <AreaMap selected={site} onSelect={setSite} />
-              <div className="map-legend"><span><i className="site-dot sgt-dot" /> SGT University</span><span><i className="site-dot chandu-dot" /> Chandu village</span></div>
-            </div>
-            <div className="panel station-data-panel">
-              <div className="panel-title">Physical station telemetry</div><div className="panel-subtitle">Live node values only · no model substitution</div>
-              {station?.count ? <div className="telemetry-list">{station.observations.slice(0, 6).map((row: any) => <div className="telemetry-row" key={row.id}><b>{new Date(row.observed_at).toLocaleString('en-IN')} · {row.station_code}</b><span>Temp {row.temperature_c ?? '—'}°C</span><span>RH {row.humidity_pct ?? '—'}%</span><span>Pressure {row.pressure_hpa ?? '—'} hPa</span><span>PM2.5 {row.pm25_ugm3 ?? '—'} µg/m³</span><span>PM10 {row.pm10_ugm3 ?? '—'} µg/m³</span><span>BME gas {row.bme680_gas_resistance_ohm ?? '—'} Ω</span><span>MQ135 {row.mq135_mv ?? '—'} mV</span><span>GPS {row.gps_fix ? 'FIX' : 'NO FIX'}</span></div>)}</div> : <div className="station-waiting"><div className="waiting-icon"><RadioTower size={23} /></div><b>Waiting for physical station telemetry</b><span>The configured sensors are PMS5003, MQ135 and BME680. When the node/gateway posts readings, this panel will show actual field observations.</span><small>GPS + RTC metadata · LoRa transport integration pending</small></div>}
-              <div className="sensor-strip"><div><span>PMS5003</span><b>PM1 · PM2.5 · PM10</b></div><div><span>BME680</span><b>T · RH · Pressure · Gas Ω</b></div><div><span>MQ135</span><b>Relative gas response</b></div><div><span>GPS / RTC</span><b>Position · Time</b></div></div>
-            </div>
-          </div>
-        </section>
+        <ModelRunContext.Provider value={modelRun}>
+          <ViewStage view={view} order={VIEW_IDS}>{renderView(view)}</ViewStage>
+        </ModelRunContext.Provider>
 
         <footer className="app-footer"><div><b>AEIOS SENTINEL</b><span>Local environmental intelligence for SGT University and Chandu village.</span></div><div className="footer-provenance"><span>WEATHER: OPEN-METEO</span><span>AIR QUALITY: CAMS</span><span>TIMEZONE: ASIA/KOLKATA</span></div><div className="footer-disclaimer">External model data is regional context. Local station data, model forecasts and scenario simulations are always identified separately.</div></footer>
       </main>

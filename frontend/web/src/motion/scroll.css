@@ -1,0 +1,158 @@
+/*
+ * Scroll motion primitives (scroll.tsx). Tokens only (src/design/tokens.css). Motion writes the animated transforms and
+ * opacities inline; nothing here hides content, so every element is in its final state if no script runs.
+ */
+
+/* ---- reading progress: a 3 px bar stuck to the top of the content area, taking no layout space ---- */
+.scroll-progress {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 3px;
+  margin-bottom: -3px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--aeios-tint-live), var(--aeios-accent) 60%);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+/* ---- view hero: the chapter card at the top of every non-overview view ---- */
+.view-hero {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aeios-space-5) var(--aeios-space-8);
+  align-items: flex-end;
+  justify-content: space-between;
+  overflow: hidden;
+  isolation: isolate;
+  padding: clamp(28px, 3.4vw, 52px) clamp(20px, 3vw, 44px) clamp(22px, 2.4vw, 34px);
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: var(--aeios-radius-xl);
+  background: linear-gradient(180deg, var(--aeios-surface-1) 0%, var(--aeios-canvas) 100%);
+  color: var(--aeios-text-primary);
+  font-family: var(--aeios-font-ui);
+}
+
+@supports (overflow: clip) {
+  .view-hero {
+    overflow: clip;
+  }
+}
+
+/* Decorative depth layers (aria-hidden). They drift with the scroll at two rates; neither resembles data. */
+.view-hero__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.view-hero__grid {
+  position: absolute;
+  inset: -64px 0 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--aeios-border-subtle) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(100deg, transparent 18%, var(--aeios-canvas) 72%);
+}
+
+.view-hero__glow {
+  position: absolute;
+  top: -55%;
+  right: -12%;
+  width: min(760px, 86%);
+  aspect-ratio: 1.55;
+  will-change: transform;
+}
+
+.view-hero__glow-core {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, var(--aeios-tint-live), transparent 72%),
+    radial-gradient(closest-side at 64% 62%, var(--aeios-tint-regional), transparent 76%);
+}
+
+.view-hero__main {
+  flex: 1 1 420px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.view-hero__kicker {
+  display: flex;
+  gap: var(--aeios-space-3);
+  align-items: center;
+  margin: 0 0 var(--aeios-space-4);
+  color: var(--aeios-accent);
+  font: 600 var(--aeios-text-xs) / 1.2 var(--aeios-font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.view-hero__rule {
+  display: block;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--aeios-accent);
+  transform-origin: 0 50%;
+}
+
+.view-hero__title {
+  max-width: 22ch;
+  margin: 0;
+  color: var(--aeios-text-primary);
+  font: 650 var(--aeios-text-display) / 1.06 var(--aeios-font-ui);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+/* Each word rises out of its own mask; the padding keeps ascenders and descenders inside it. */
+.view-hero__word {
+  display: inline-block;
+  margin: -0.08em -0.03em -0.18em;
+  padding: 0.08em 0.03em 0.18em;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+@supports (overflow: clip) {
+  .view-hero__word {
+    overflow: clip;
+  }
+}
+
+.view-hero__word-inner {
+  display: inline-block;
+}
+
+.view-hero__subtitle {
+  max-width: 68ch;
+  margin: var(--aeios-space-4) 0 0;
+  color: var(--aeios-text-secondary);
+  font-size: var(--aeios-text-md);
+  line-height: var(--aeios-leading-body);
+}
+
+.view-hero__right {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (width <= 680px) {
+  .view-hero {
+    padding: var(--aeios-space-6) var(--aeios-space-4) var(--aeios-space-5);
+  }
+
+  .view-hero__glow {
+    top: -30%;
+    right: -40%;
+    width: 120%;
+  }
+}

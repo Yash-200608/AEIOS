@@ -1,10 +1,10 @@
 /*
  * Step 1: the Atmospheric Column's CSS wind streaks. They pause off-screen (IntersectionObserver), pause on request, and are off under
- * reduced motion, while every measurement, label and the values table stay exactly as they were.
+ * reduced motion, while every measurement, label and the values table stay exactly as they were. The column lives in the Overview
+ * view's command center, below the globe landing.
  */
-import { expect, hasHorizontalOverflow, test } from './support';
+import { expect, hasHorizontalOverflow, openView, test } from './support';
 
-const URL = '/?preview&fixture=normal';
 const states = (page: import('@playwright/test').Page) =>
   page.locator('.cc-col-flow').evaluateAll((els) => els.map((el) => getComputedStyle(el).animationPlayState));
 const infoText = (page: import('@playwright/test').Page) =>
@@ -19,7 +19,7 @@ const infoText = (page: import('@playwright/test').Page) =>
     }));
 
 async function openColumn(page: import('@playwright/test').Page) {
-  await page.goto(URL);
+  await openView(page, 'overview');
   await expect(page.locator('#overview .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
   const column = page.locator('.cc-column').first();
   await column.scrollIntoViewIfNeeded();

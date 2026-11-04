@@ -264,3 +264,24 @@
 .cc-column[data-enter='done'] .cc-col-label { transition: opacity var(--aeios-dur-state) var(--aeios-ease) 0.3s; }
 @media (prefers-reduced-motion: reduce) { .cc-col-mix, .cc-col-mixtop, .cc-col-label { transform: none !important; opacity: 1 !important; transition: none !important; } }
 .aeios-force-reduced-motion .cc-col-mix, .aeios-force-reduced-motion .cc-col-mixtop, .aeios-force-reduced-motion .cc-col-label { transform: none !important; opacity: 1 !important; transition: none !important; }
+
+/* Hover lift (pointer devices only): telemetry cells and criteria gauges gain a surface under the cursor and their content rises
+   slightly. It moves the CSS `translate` property, never `transform`, which Motion owns on the reveal cells, so the two engines
+   never write the same property. In a telemetry cell the content moves, not the cell: the strip clips its cells (rounded frame),
+   and a lifted cell would lose its 3 px status edge. A user affordance only: nothing moves unless the pointer is on it. No
+   movement under reduced motion (the surface change stays; the duration tokens already collapse to zero there). */
+.cc-gauge { position: relative; isolation: isolate; }
+.cc-gauge::before { content: ""; position: absolute; inset: calc(var(--aeios-space-2) * -1) calc(var(--aeios-space-3) * -1); z-index: -1; border: 1px solid var(--aeios-border-subtle); border-radius: var(--aeios-radius-md); background: var(--aeios-surface-2); opacity: 0; transition: opacity var(--aeios-dur-state) var(--aeios-ease); pointer-events: none; }
+@media (hover: hover) {
+  .cc-rail__cell { transition: background-color var(--aeios-dur-state) var(--aeios-ease); }
+  .cc-rail__cell > * { transition: translate var(--aeios-dur-state) var(--aeios-ease); }
+  .cc-rail__cell:hover { background: var(--aeios-surface-2); }
+  .cc-rail__cell:hover > * { translate: 0 -3px; }
+  .cc-gauge { transition: translate var(--aeios-dur-state) var(--aeios-ease); }
+  .cc-gauge:hover { translate: 0 -2px; }
+  .cc-gauge:hover::before { opacity: 1; }
+  .cc-dest a svg { transition: translate var(--aeios-dur-state) var(--aeios-ease); }
+  .cc-dest a:hover svg { translate: 3px 0; }
+}
+@media (prefers-reduced-motion: reduce) { .cc-rail__cell:hover > *, .cc-gauge:hover, .cc-dest a:hover svg { translate: none; } }
+.aeios-force-reduced-motion .cc-rail__cell:hover > *, .aeios-force-reduced-motion .cc-gauge:hover, .aeios-force-reduced-motion .cc-dest a:hover svg { translate: none; }

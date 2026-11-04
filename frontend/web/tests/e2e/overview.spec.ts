@@ -2,20 +2,37 @@
  * Overview states (development fixtures, /?preview&fixture=NAME). Open-Meteo is blocked and the seeded cache is old,
  * so the weather model always arrives as a cached run: "Cached model run" is the expected feed label (except feederror,
  * which forces the model feed into its error state).
+ *
+ * The Overview is its own view: the globe landing on top, then the command center, whose Mission Reveal starts when it is
+ * scrolled into view. The checks below scroll to it first, so nothing is measured mid-fade.
  */
 import AxeBuilder from '@axe-core/playwright';
-import { blockedOpenMeteoRequests, expect, hasHorizontalOverflow, settleFiniteAnimations, test } from './support';
+import {
+  blockedOpenMeteoRequests,
+  expect,
+  hasHorizontalOverflow,
+  revealCommandCenter,
+  settleFiniteAnimations,
+  stage,
+  test,
+} from './support';
 
 const FIXTURES = ['normal', 'stale', 'noreading', 'gatewayoffline', 'alert', 'feederror'] as const;
 
 for (const name of FIXTURES) {
   test(`overview: fixture ${name}`, async ({ page, context }, testInfo) => {
     await page.goto(`/?preview&fixture=${name}`);
+    await expect(stage(page)).toHaveAttribute('data-view', 'overview');
     const overview = page.locator('#overview');
     // The fixture banner proves the fixture (not live data) is what is rendered.
     await expect(overview.locator('.cc-dev')).toContainText(`"${name}"`);
 
+    // One h1 in the view: the situation statement. The globe landing's title is an h2.
     await expect(page.locator('h1.cc-statement')).toBeVisible();
+    await expect(page.locator('[data-view-id="overview"] h1')).toHaveCount(1);
+    await expect(page.getByTestId('globe-hero').locator('h2')).toHaveCount(1);
+
+    await revealCommandCenter(page, name === 'feederror' ? /unavailable/ : 'Cached model run');
 
     // Provenance and node freshness are separate labels in the currency strip.
     const currency = overview.locator('.cc-currency');
@@ -29,7 +46,7 @@ for (const name of FIXTURES) {
       await expect(page.locator('h1.cc-statement')).toContainText('The weather model is unavailable');
     } else {
       // Weather fetch is aborted, so the app falls back to the seeded (old) cache and must say so.
-      await expect(currency).toContainText('Cached model run', { timeout: 15_000 });
+      await expect(currency).toContainText('Cached model run');
     }
     if (name === 'stale') {
       await expect(currency.locator('.ax-state').filter({ hasText: 'STALE' })).toBeVisible();
@@ -38,11 +55,13 @@ for (const name of FIXTURES) {
 
     expect(await hasHorizontalOverflow(page), 'page must not scroll horizontally').toBe(false);
 
-    // Accessibility: fail on serious/critical, report the rest. Wait for finite reveal animations first so
-    // mid-fade opacity does not produce false colour-contrast results.
+    // Accessibility: fail on serious/critical, report the rest. The globe intro has ended (scrolled away, or done) and finite
+    // reveal animations are waited for, so mid-fade opacity does not produce false colour-contrast results.
+    await expect(page.getByTestId('globe-hero')).toHaveAttribute('data-globe-intro', 'done', { timeout: 8_000 });
     await settleFiniteAnimations(page).catch(() => undefined);
     const axe = await new AxeBuilder({ page })
       .include('#overview')
+      .include('[data-testid="globe-hero"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
     const summary = axe.violations.map((v) => `${v.impact ?? 'unknown'} ${v.id} (${v.nodes.length}): ${v.help}`);
