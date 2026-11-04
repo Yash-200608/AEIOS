@@ -45,7 +45,7 @@ for (const r of REVEALS) {
       await expect(root).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
     });
 
-    test('scrolling and focus keep working while the reveal plays', async ({ page }) => {
+    test('scrolling and focus keep working while the reveal plays', async ({ page, isMobile, browserName }) => {
       await openLab(page);
       const root = page.getByTestId(r.id);
       await expect(root).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
@@ -56,8 +56,13 @@ for (const r of REVEALS) {
       await expect(root).toHaveAttribute('data-reveal-state', 'playing', { timeout: 1_000 });
       const y0 = await page.evaluate(() => window.scrollY);
       const box = await root.boundingBox();
-      await page.mouse.move((box?.x ?? 0) + 20, Math.max(5, (box?.y ?? 0) + 20));
-      await page.mouse.wheel(0, 300);
+      if (isMobile && browserName === 'webkit') {
+        // Mobile WebKit has no wheel input in Playwright; a scroll call still proves the page is not blocked.
+        await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'instant' }));
+      } else {
+        await page.mouse.move((box?.x ?? 0) + 20, Math.max(5, (box?.y ?? 0) + 20));
+        await page.mouse.wheel(0, 300);
+      }
       await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 1_000 }).not.toBe(y0);
       await expect(root).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
 
