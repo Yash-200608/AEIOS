@@ -235,3 +235,10 @@
 }
 /* Disclosure toggles inside Command Center components meet the 24 px target minimum */
 .cc .how-it-works summary, .cc summary { min-height: var(--aeios-target-min); display: inline-flex; align-items: center; }
+
+/* Mission reveal controls and the status-label morph (Step 2) */
+.cc-reveal-controls { display: flex; justify-content: flex-end; gap: var(--aeios-space-2); margin-bottom: var(--aeios-space-2); }
+.cc-reveal-btn { display: inline-flex; align-items: center; gap: var(--aeios-space-1); min-height: 28px; padding: 0 var(--aeios-space-2); border: 1px solid transparent; border-radius: var(--aeios-radius-sm); background: transparent; color: var(--aeios-text-tertiary); font: inherit; font-size: var(--aeios-text-xs); cursor: pointer; }
+.cc-reveal-btn:hover { color: var(--aeios-text-primary); border-color: var(--aeios-border-subtle); }
+.cc-reveal-btn:focus-visible { outline: 2px solid var(--aeios-focus-ring); outline-offset: 2px; }
+.cc-morph { position: relative; display: inline-flex; }

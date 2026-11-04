@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Loader2, MapPin, ServerCrash, ShieldAlert } from 'lucide-react';
-import { SourceLabel, StateLabel, type OperationalState } from '../../design/primitives';
+import { SourceLabel, type OperationalState } from '../../design/primitives';
+import MorphStateLabel from '../../motion/MorphStateLabel';
+import { RevealGroup } from '../../motion/reveal';
 import { situationStatement, type DispersionClass, type feedStatus } from './model';
 
 type Feed = ReturnType<typeof feedStatus>;
@@ -29,7 +31,7 @@ export default function SituationHeader({ cls, loadState, site, subtitle, lat, l
         {loadState === 'ready' && <><Icon size={34} aria-hidden="true" /> <span>{s.tone === 'unknown' ? `Dispersion at ${site} cannot be assessed right now.` : <>{s.lead.replace(/\.$/, '')} <span className="cc-statement__site">at {site}.</span></>}</span></>}
       </h1>
       {loadState === 'ready' && <p className="cc-situation__detail">{cls.label === 'Unknown' ? cls.detail : `${cls.detail}.`} The evidence is below.</p>}
-      <div className="cc-currency" role="group" aria-label="How current the evidence is">
+      <RevealGroup group="currency" className="cc-currency" role="group" aria-label="How current the evidence is">
         <div className="cc-currency__item">
           <SourceLabel kind="regional" detail="Open-Meteo" />
           <span className={`cc-feed cc-feed--${feed.tone}`}><FeedIcon size={13} aria-hidden="true" className={feed.tone === 'neutral' ? 'ax-spin' : undefined} /> {feed.label}</span>
@@ -37,10 +39,10 @@ export default function SituationHeader({ cls, loadState, site, subtitle, lat, l
         </div>
         <div className="cc-currency__item">
           <SourceLabel kind="live" />
-          <StateLabel state={stationState} scope={stationNode ? `Node ${stationNode}` : 'Node'} />
+          <MorphStateLabel state={stationState} scope={stationNode ? `Node ${stationNode}` : 'Node'} />
           <span className="cc-dim">last packet <span className="ax-mono">{stationAgo}</span></span>
         </div>
-      </div>
+      </RevealGroup>
     </header>
   );
 }

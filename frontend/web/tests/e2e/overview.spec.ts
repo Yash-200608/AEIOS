@@ -20,7 +20,10 @@ for (const name of FIXTURES) {
     // Provenance and node freshness are separate labels in the currency strip.
     const currency = overview.locator('.cc-currency');
     await expect(currency.getByText('MEASURED · AEIOS STATION', { exact: true })).toBeVisible();
-    await expect(currency.locator('.ax-state').filter({ hasText: /^Node/ })).toBeVisible();
+    // A status-label morph keeps the outgoing label in the page for about 120 ms, so wait until exactly one node label remains.
+    const nodeLabel = currency.locator('.ax-state').filter({ hasText: /^Node/ });
+    await expect(nodeLabel).toHaveCount(1);
+    await expect(nodeLabel).toBeVisible();
 
     if (name === 'feederror') {
       await expect(page.locator('h1.cc-statement')).toContainText('The weather model is unavailable');

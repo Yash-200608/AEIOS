@@ -1,4 +1,6 @@
-import { StateLabel, type OperationalState } from '../../design/primitives';
+import type { OperationalState } from '../../design/primitives';
+import MorphStateLabel from '../../motion/MorphStateLabel';
+import { RevealCell } from '../../motion/reveal';
 import type { HealthRow, HealthState } from './model';
 
 const STATE: Record<HealthState, OperationalState> = {
@@ -21,13 +23,13 @@ export default function SystemRail({ feeds, rows, onNavigate }: { feeds: FeedCel
         <a className="cc-link" href="#station" onClick={(e) => { e.preventDefault(); onNavigate('station'); }}>Station network</a>
       </div>
       <ul className="cc-rail__cells">
-        {cells.map((c) => (
-          <li key={c.id} className={`cc-rail__cell cc-rail__cell--${c.state}`}>
+        {cells.map((c, i) => (
+          <RevealCell key={c.id} index={i} className={`cc-rail__cell cc-rail__cell--${c.state}`}>
             <span className="cc-rail__scope">{c.scope}</span>
             <span className="cc-rail__name">{c.name}</span>
-            <StateLabel state={c.state} />
+            <MorphStateLabel state={c.state} />
             <span className="cc-rail__detail">{c.detail}</span>
-          </li>
+          </RevealCell>
         ))}
       </ul>
     </section>

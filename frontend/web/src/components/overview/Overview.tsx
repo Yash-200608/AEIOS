@@ -5,6 +5,7 @@ import { EmptyState, type OperationalState } from '../../design/primitives';
 import { compass, numeric, type WeatherPayload } from '../../lib/api';
 import { CALM_WIND_KMH, dispersionClass, inversion, meanLowWind, ventilation, VENTILATION_POOR } from '../../lib/derived';
 import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeFreshness, siteReading, useAeios } from '../../lib/freshness';
+import { RevealControls, RevealGroup, RevealRoot } from '../../motion/reveal';
 import { useAlerts } from '../SmokeAlerts';
 import AlertSummary from './AlertSummary';
 import EnvironmentalAssessment from './EnvironmentalAssessment';
@@ -128,10 +129,11 @@ export default function Overview(p: OverviewProps) {
 
   return (
     <section id="overview" className="page-section" aria-label="Overview">
-      <div className="cc">
+      <RevealRoot className="cc">
         {fixtureName && (
           <div className="cc-dev" role="note"><AlertTriangle size={16} aria-hidden="true" /> <span><strong>Development fixture &quot;{fixtureName}&quot;.</strong> Illustrative state for visual checks, not real data. Not present in production builds.</span></div>
         )}
+        <RevealControls />
         <SituationHeader
           cls={cls} loadState={loadState} site={p.title} subtitle={p.subtitle} lat={p.lat} lon={p.lon} feed={feed}
           modelFetched={istTime(p.lastUpdated)} modelHour={modelHour} stationNode={reading.node} stationState={stationState}
@@ -141,20 +143,20 @@ export default function Overview(p: OverviewProps) {
           <div style={{ marginTop: 'var(--aeios-space-6)' }}><EmptyState kind="stale" title="Weather model feed is a cached run">{p.forecastMeta.warning}</EmptyState></div>
         )}
         <div className="cc-band">
-          <div className="cc-band__main">
+          <RevealGroup group="assessment" className="cc-band__main">
             <EnvironmentalAssessment
               loadState={loadState} evidence={evidence} limits={limits} hourLabel={modelHour} column={column} onNavigate={p.onNavigate} onRetry={p.onRetry}
               criteria={{ vc, wind, inv, blh: column.blh, poorAt: VENTILATION_POOR, calmKmh: CALM_WIND_KMH }}
             />
-          </div>
-          <div className="cc-band__side">
+          </RevealGroup>
+          <RevealGroup group="evidence" className="cc-band__side">
             <LocalObservations loaded={loaded} failed={failed} state={observation} node={reading.node} headline={headline} values={values} last={reading.packet ? values : null} packetAgo={packetAgo} />
-          </div>
+          </RevealGroup>
         </div>
         <SystemRail feeds={feeds} rows={health} onNavigate={p.onNavigate} />
         <div className="cc-band cc-band--b">
-          <div className="cc-band__alerts"><AlertSummary outcome={outcome} windowHours={ALERT_WINDOW_HOURS} onNavigate={p.onNavigate} /></div>
-          <div className="cc-band__outlook"><OutlookRibbon rows={outlookRows} poorAt={VENTILATION_POOR} loadState={loadState} onNavigate={p.onNavigate} /></div>
+          <RevealGroup group="outlook" className="cc-band__alerts"><AlertSummary outcome={outcome} windowHours={ALERT_WINDOW_HOURS} onNavigate={p.onNavigate} /></RevealGroup>
+          <RevealGroup group="outlook" className="cc-band__outlook"><OutlookRibbon rows={outlookRows} poorAt={VENTILATION_POOR} loadState={loadState} onNavigate={p.onNavigate} /></RevealGroup>
         </div>
         <div className="cc-grid">
           <div className="cc-span-12">
@@ -165,7 +167,7 @@ export default function Overview(p: OverviewProps) {
           </div>
           <div className="cc-span-12"><OverviewDestinations onNavigate={p.onNavigate} /></div>
         </div>
-      </div>
+      </RevealRoot>
     </section>
   );
 }

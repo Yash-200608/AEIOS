@@ -1,5 +1,6 @@
 import { Clock } from 'lucide-react';
-import { Readout, SourceLabel, StateLabel, type OperationalState } from '../../design/primitives';
+import { Readout, SourceLabel, type OperationalState } from '../../design/primitives';
+import MorphStateLabel from '../../motion/MorphStateLabel';
 import type { ObservationState, PacketValues } from './model';
 
 // 'no-reading' means a fresh packet whose particulate sensor sent no value: the node itself is current.
@@ -28,7 +29,7 @@ export default function LocalObservations({ loaded, failed, state, node, headlin
         <div><div className="ax-eyebrow">Measured air at the site</div><h2 id="cc-obs-h" className="cc-h2">{loaded ? headline.title : 'Checking the gateway…'}</h2></div>
         <div className="cc-aside">
           <SourceLabel kind="live" />
-          {loaded && <StateLabel state={failed ? 'unavailable' : NODE_STATE[state]} scope={node ? `Node ${node}` : 'Node'} />}
+          {loaded && <MorphStateLabel state={failed ? 'unavailable' : NODE_STATE[state]} scope={node ? `Node ${node}` : 'Node'} />}
         </div>
       </div>
       {loaded && <p className="cc-p">{headline.detail}</p>}
