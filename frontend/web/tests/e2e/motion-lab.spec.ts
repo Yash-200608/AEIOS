@@ -217,3 +217,95 @@ test('3D scene monitor: renders in view, stops rendering off-screen', async ({ p
   await page.waitForTimeout(1_500);
   expect(await intAttr(host, 'data-scene-frames'), 'off-screen: no WebGL frames').toBe(f1);
 });
+
+// ---------------------------------------------------------------- (6) Reference-derived demonstrations
+test('status label morph: each state swaps the label', async ({ page }) => {
+  await openLab(page);
+  const morph = page.getByTestId('state-morph');
+  await morph.scrollIntoViewIfNeeded();
+  for (const [button, state, text] of [
+    ['Show stale', 'stale', /stale/i],
+    ['Show no packet', 'nodata', /no data|no packet|never/i],
+    ['Show gateway error', 'unavailable', /unavailable|error/i],
+    ['Show fresh', 'fresh', /fresh/i],
+  ] as const) {
+    await morph.getByRole('button', { name: button, exact: true }).click();
+    await expect(morph).toHaveAttribute('data-state', state);
+    await expect(morph.locator('.ml-morph__chip')).toContainText(text);
+    await expect(morph.locator('.ml-morph__chip .ax-state')).toHaveCount(1, { timeout: 1_500 }); // the outgoing label is gone
+  }
+});
+
+test('atmospheric flow: the mixing layer rises once; selecting a lane quiets the others', async ({ page }) => {
+  await openLab(page);
+  const flow = page.getByTestId('atmos-flow');
+  await flow.scrollIntoViewIfNeeded();
+  await expect(flow).toHaveAttribute('data-enter', 'done');
+  await expect
+    .poll(() => flow.locator('.ml-flow__mix').evaluate((el) => getComputedStyle(el).transform), { timeout: 2_000 })
+    .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+  const lanes = flow.locator('.ml-lane');
+  await lanes.first().focus();
+  await expect(lanes.first()).toHaveClass(/is-hot/);
+  await expect
+    .poll(
+      () =>
+        lanes
+          .nth(1)
+          .locator('.ml-streak')
+          .first()
+          .evaluate((el) => getComputedStyle(el).opacity),
+      { timeout: 1_500 },
+    )
+    .toBe('0.35');
+  await expect
+    .poll(() =>
+      lanes
+        .first()
+        .locator('.ml-streak')
+        .first()
+        .evaluate((el) => getComputedStyle(el).opacity),
+    )
+    .toBe('1');
+});
+
+test('story scroll: the chapter in the middle of the viewport is marked, and the page is never snapped', async ({ page }) => {
+  await openLab(page);
+  const story = page.getByTestId('story-scroll');
+  await story.scrollIntoViewIfNeeded();
+  await page.locator('[data-story-chapter="4"]').evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await expect(page.locator('[data-story-chapter="4"]')).toHaveAttribute('data-active', 'true');
+  await expect(story.locator('a[aria-current="location"]')).toHaveCount(1);
+  await expect(story.locator('a[aria-current="location"]')).toContainText('4.');
+  await expect(page.locator('[data-story-chapter][data-active="true"]')).toHaveCount(1);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType)).toBe('none');
+});
+
+test('status label morph: polling again changes nothing, a real change swaps the label', async ({ page }) => {
+  await openLab(page);
+  const morph = page.getByTestId('state-morph');
+  await morph.scrollIntoViewIfNeeded();
+  await morph.getByRole('button', { name: 'Show stale', exact: true }).click();
+  await expect(morph.locator('.ml-morph__chip .ax-state')).toHaveCount(1, { timeout: 1_500 });
+  await page.evaluate(() => {
+    const w = window as unknown as { __node: Element | null; __minOpacity: number };
+    w.__node = document.querySelector('.ml-morph__chip .ax-state');
+    w.__minOpacity = 1;
+    const tick = () => {
+      document
+        .querySelectorAll('.ml-morph__chip .cc-morph > span')
+        .forEach((s) => (w.__minOpacity = Math.min(w.__minOpacity, Number(getComputedStyle(s).opacity))));
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  for (let i = 0; i < 3; i += 1) await morph.getByRole('button', { name: 'Poll again (same state)' }).click();
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => (window as unknown as { __node: Element }).__node.isConnected)).toBe(true);
+  expect(await page.evaluate(() => (window as unknown as { __minOpacity: number }).__minOpacity)).toBe(1);
+  await expect(morph).toHaveAttribute('data-polls', '3');
+  await morph.getByRole('button', { name: 'Show no packet', exact: true }).click();
+  await expect(morph.locator('.ml-morph__chip .ax-state')).toHaveCount(1, { timeout: 1_500 });
+  expect(await page.evaluate(() => (window as unknown as { __node: Element }).__node.isConnected)).toBe(false);
+  expect(await page.evaluate(() => (window as unknown as { __minOpacity: number }).__minOpacity)).toBeLessThan(1);
+});

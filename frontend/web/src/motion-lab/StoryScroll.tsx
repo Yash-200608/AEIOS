@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { m } from 'motion/react';
 import { Readout, SourceLabel } from '../design/primitives';
 import { gsapEase, motionTokens } from '../design/motion';
@@ -128,6 +128,22 @@ export default function StoryScroll({ model }: { model: LabModel }) {
   const [engine, setEngine] = useState<Engine>('motion');
   const { reduced } = useMotionPolicy();
 
+  // The chapter nearest the middle of the viewport carries a 3 px accent and its index link is aria-current. Nothing moves or
+  // dims: this is the "focal shift" idea expressed as a marker, so text contrast never changes and scrolling stays native.
+  const [active, setActive] = useState(1);
+  useEffect(() => {
+    const els = Array.from(scope.current?.querySelectorAll<HTMLElement>('[data-story-chapter]') ?? []);
+    if (!els.length || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.storyChapter));
+      },
+      { rootMargin: '-45% 0px -45% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [engine, reduced]);
+
   // ScrollTrigger variant: built only while selected; revertOnUpdate kills it when switching back, useGSAP reverts on unmount.
   useGSAP(
     () => {
@@ -171,7 +187,13 @@ export default function StoryScroll({ model }: { model: LabModel }) {
         {chapterBody(i, model)}
       </>
     );
-    const common = { id: `ml-story-${i}`, className: 'ml-chapter', 'data-story-chapter': String(i), 'aria-labelledby': `ml-story-h${i}` };
+    const common = {
+      id: `ml-story-${i}`,
+      className: 'ml-chapter',
+      'data-story-chapter': String(i),
+      'data-active': String(active === i),
+      'aria-labelledby': `ml-story-h${i}`,
+    };
     // Remount on engine or policy change so each engine starts from its own clean state.
     return engine === 'motion' ? (
       <m.section
@@ -211,7 +233,7 @@ export default function StoryScroll({ model }: { model: LabModel }) {
         <ol className="ml-index">
           {CHAPTERS.map((t, n) => (
             <li key={t}>
-              <a className="cc-link" href={`#ml-story-${n + 1}`}>
+              <a className="cc-link" href={`#ml-story-${n + 1}`} aria-current={active === n + 1 ? 'location' : undefined}>
                 {n + 1}. {t}
               </a>
             </li>

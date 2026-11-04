@@ -78,6 +78,21 @@ export default function AtmosFlow({
   const [paused, setPaused] = useState(false);
   const [hot, setHot] = useState<number | null>(null);
   const { reduced } = useMotionPolicy();
+  // The mixing layer rises once, the first time the instrument is on screen. Reduced motion (or no IntersectionObserver): already there.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        setEntered(true);
+        io.disconnect();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const enter = reduced || typeof IntersectionObserver === 'undefined' || entered ? 'done' : 'pending';
   const active = useActiveLoop(rootRef, paused);
 
   const lanes = lanesFor(winds, temps);
@@ -141,7 +156,7 @@ export default function AtmosFlow({
         : 'off-screen or tab hidden';
 
   return (
-    <div className="ml-flow" data-testid="atmos-flow" data-flow-active={String(running)} ref={rootRef}>
+    <div className="ml-flow" data-testid="atmos-flow" data-flow-active={String(running)} data-enter={enter} ref={rootRef}>
       <div className="ml-flow__bar">
         <SourceLabel kind="regional" detail={`Open-Meteo · valid ${validLabel}`} />
         <button

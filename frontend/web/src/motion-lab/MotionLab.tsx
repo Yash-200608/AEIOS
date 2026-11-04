@@ -9,6 +9,7 @@ import { FIXTURES } from '../components/overview/fixtures.dev';
 import { gsap, ScrollTrigger } from './gsap';
 import { buildModel, useWeatherRun, type Telemetry } from './labModel';
 import MissionRevealMotion from './MissionRevealMotion';
+import StateMorph from './StateMorph';
 import MissionRevealGsap from './MissionRevealGsap';
 import AtmosFlow from './AtmosFlow';
 import SceneMonitor from './SceneMonitor';
@@ -142,6 +143,12 @@ export default function MotionLab() {
               <MissionRevealMotion model={model} />
               <h3>GSAP twin (useGSAP timeline, comparison only)</h3>
               <MissionRevealGsap model={model} />
+              <h3>Status label morph (production component)</h3>
+              <p className="ml-p">
+                The production status-label morph: the label swaps with a 120 ms blur only when the state really changes; polling again
+                changes nothing. Reference: Prompt Motion, Shape morphing through UI states (label only, no size animation).
+              </p>
+              <StateMorph />
             </section>
 
             <section id="ml-proto-b" className="ml-section" aria-labelledby="ml-proto-b-h">

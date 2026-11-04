@@ -156,6 +156,8 @@
   color: var(--aeios-text-secondary);
 }
 .ml-flow__mix {
+  transform-box: fill-box;
+  transform-origin: bottom;
   fill: var(--aeios-tint-regional);
 }
 .ml-flow__mixtop {
@@ -221,6 +223,7 @@
   stroke-width: 1;
 }
 .ml-streak {
+  transition: opacity var(--aeios-dur-micro) var(--aeios-ease);
   stroke: var(--aeios-source-regional);
   stroke-width: 3;
   stroke-linecap: round;
@@ -330,6 +333,8 @@
   gap: var(--aeios-space-4);
 }
 .ml-chapter {
+  border-left: 3px solid transparent;
+  transition: border-color var(--aeios-dur-state) var(--aeios-ease);
   min-width: 0;
   padding: var(--aeios-space-5);
   background: var(--aeios-surface-1);
@@ -358,4 +363,39 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--aeios-space-2);
+}
+
+/* ---------- State morph (A2) ---------- */
+.ml-morph__chip {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  margin: var(--aeios-space-4) 0 var(--aeios-space-2);
+  padding: var(--aeios-space-2) var(--aeios-space-4);
+  border: 1px solid var(--aeios-border-strong);
+  border-radius: var(--aeios-radius-md);
+  background: var(--aeios-surface-2);
+}
+
+/* ---------- Atmospheric flow: focal shift and mixing-layer rise (B) ---------- */
+/* While one lane is selected the other lanes' streaks recede. Text is never dimmed, so contrast is unchanged. */
+.ml-flow:has(.ml-lane.is-hot) .ml-lane:not(.is-hot) .ml-streak {
+  opacity: 0.35;
+}
+/* The mixing layer rises from the ground to its modelled height once, when the instrument first scrolls into view. */
+.ml-flow[data-enter='pending'] .ml-flow__mix {
+  transform: scaleY(0);
+}
+.ml-flow[data-enter='done'] .ml-flow__mix {
+  transition: transform var(--aeios-dur-nav) var(--aeios-ease);
+}
+
+/* ---------- Story scroll: the active chapter carries the accent (C) ---------- */
+.ml-chapter[data-active='true'] {
+  border-left-color: var(--aeios-focus-ring);
+}
+.ml-index a[aria-current='location'] {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
 }
