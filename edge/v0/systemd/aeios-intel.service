@@ -1,0 +1,16 @@
+[Unit]
+Description=AEIOS intelligence pipeline (receiver gateway.db -> quality, baseline, detection -> aeios.db)
+Wants=aeios-receiver.service
+After=aeios-receiver.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/aeios_intel
+ExecStart=/usr/bin/python3 -u -m gateway.services.v0_bridge --source-db %h/gateway/gateway.db --registry %h/.config/aeios/v0_nodes.json --db %h/aeios_intel/var/aeios.db --poll 5
+Restart=always
+RestartSec=10
+Nice=5
+MemoryMax=300M
+
+[Install]
+WantedBy=default.target

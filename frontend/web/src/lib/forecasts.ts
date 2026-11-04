@@ -16,6 +16,8 @@ export const STATION_DISTANCE_KM: Record<number, number> = {
 };
 
 export const HORIZONS = [1, 3, 6, 12, 24] as const;
+/** Node forecasts use location_id = 900000 + wire_id (see ai/service/stations.py); CPCB stations use their OpenAQ location ids. */
+export const isNodeForecast = (r: Pick<ForecastRow, 'location_id'>) => r.location_id >= 900000;
 export const FORECAST_STALE_MS = 3 * 3600_000;   // the Pi issues one run an hour; older than three hours means it stopped
 
 const LABEL: Record<string, string> = {

@@ -4,7 +4,7 @@ import { AlertTriangle, Info } from 'lucide-react';
 import { round } from '../lib/api';
 import { ago } from '../lib/freshness';
 import {
-  FORECAST_STALE_MS, HORIZONS, STATION_DISTANCE_KM, featureLabel, latestByHorizon, useForecasts, type ForecastRow,
+  FORECAST_STALE_MS, HORIZONS, STATION_DISTANCE_KM, featureLabel, isNodeForecast, latestByHorizon, useForecasts, type ForecastRow,
 } from '../lib/forecasts';
 
 const ist = (iso: string | null) =>
@@ -14,10 +14,15 @@ const ist = (iso: string | null) =>
 // the model was trained on CPCB hourly PM2.5 and weather, and the input is always labelled with its source.
 export default function ForecastPanel() {
   const { rows, error } = useForecasts();
+  // AEIOS nodes come first (they are the main forecast); CPCB reference stations follow as the fallback, nearest first.
   const stations = useMemo(() => {
     const seen = new Map<number, string>();
     for (const r of rows || []) if (!seen.has(r.location_id)) seen.set(r.location_id, r.station);
-    return [...seen.entries()].sort((a, b) => (STATION_DISTANCE_KM[a[0]] ?? 999) - (STATION_DISTANCE_KM[b[0]] ?? 999));
+    return [...seen.entries()].sort((a, b) => {
+      const na = a[0] >= 900000, nb = b[0] >= 900000;
+      if (na !== nb) return na ? -1 : 1;
+      return na ? a[1].localeCompare(b[1]) : (STATION_DISTANCE_KM[a[0]] ?? 999) - (STATION_DISTANCE_KM[b[0]] ?? 999);
+    });
   }, [rows]);
   const [sel, setSel] = useState<number | null>(null);
   const [driverH, setDriverH] = useState<number>(6);
@@ -28,6 +33,7 @@ export default function ForecastPanel() {
   const noInput = first?.source === 'no_input';
   const issued = first ? Date.parse(first.made_utc.includes('T') ? first.made_utc : first.made_utc.replace(' ', 'T') + 'Z') : NaN;
   const old = Number.isFinite(issued) && Date.now() - issued > FORECAST_STALE_MS;
+  const node = first ? isNodeForecast(first) : false;
   const fallback = [...byH.values()].some((r) => r.source === 'fallback_persistence');
   const degraded = [...byH.values()].some((r) => (r.reason || '').includes('weather unavailable'));
 
@@ -54,7 +60,9 @@ export default function ForecastPanel() {
           <h2 style={{ margin: '4px 0 0' }}>PM2.5 forecast · next 24 hours</h2></div>
         {first && <span className={`status-chip ${!old && !noInput ? 'status-live' : ''}`}><span className="status-led" /> {noInput ? 'NO FRESH INPUT' : old ? 'FORECAST OLD' : 'FORECAST CURRENT'} · issued {ago(Number.isFinite(issued) ? new Date(issued).toISOString() : null)}</span>}
       </div>
-      <div className="state-box state-info"><Info size={14} /><span><b>Forecast for the CPCB station, not for an AEIOS node.</b> The Pi runs a model trained on CPCB hourly PM2.5 and weather around Gurugram and forecasts what a reference station will read. It is not a measurement, and no AEIOS node data is used. Intervals are 80% bands calibrated on past winters.</span></div>
+      <div className="state-box state-info"><Info size={14} /><span>{node
+        ? <><b>Forecast from this AEIOS node's own readings.</b> The Pi forecasts from the node's PM2.5 as it reports. The model was trained on CPCB reference stations, not on nodes, so these numbers are <b>not validated on node data</b> yet. Intervals are 80% bands from CPCB winters.</>
+        : <><b>Forecast for a CPCB reference station, not for an AEIOS node.</b> This is the fallback picture: the model run on CPCB hourly PM2.5 around Gurugram. It is not a measurement. Intervals are 80% bands calibrated on past winters.</>}</span></div>
       {error && <div className="panel"><div className="panel-subtitle">Could not load forecasts: {error}</div></div>}
       {!error && rows && rows.length === 0 && (
         <div className="panel"><div className="panel-title">No forecasts yet</div>
@@ -65,10 +73,10 @@ export default function ForecastPanel() {
           <div className="fc-toolbar">
             <label className="fc-select">Station
               <select value={sel} onChange={(e) => setSel(Number(e.target.value))}>
-                {stations.map(([id, name]) => <option key={id} value={id}>{name}{STATION_DISTANCE_KM[id] ? ` · ${STATION_DISTANCE_KM[id]} km from SGT` : ''}</option>)}
+                {stations.map(([id, name]) => <option key={id} value={id}>{id >= 900000 ? `AEIOS node · ${name}` : `CPCB fallback · ${name}${STATION_DISTANCE_KM[id] ? ` · ${STATION_DISTANCE_KM[id]} km from SGT` : ''}`}</option>)}
               </select>
             </label>
-            <span className="source-badge">AEIOS_MODEL_FORECAST · {first?.model_version ?? 'no model'}</span>
+            <span className="source-badge">{node ? 'AEIOS_NODE_FORECAST' : 'CPCB_FALLBACK_FORECAST'} · {first?.model_version ?? 'no model'}</span>
           </div>
           {old && <div className="state-box state-warm" role="status"><AlertTriangle size={14} /><span><b>This forecast is old.</b> The newest run was issued {ago(new Date(issued).toISOString())}; the gateway normally issues one every hour. Treat it as history, not as a current forecast.</span></div>}
           {noInput && <div className="state-box state-warm" role="status"><AlertTriangle size={14} /><span><b>No forecast for this station.</b> {first?.reason || 'No fresh reading was available.'}</span></div>}
