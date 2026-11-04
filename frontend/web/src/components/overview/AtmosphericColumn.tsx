@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useMotionPolicy } from '../../motion/useMotionPolicy';
 import { Navigation, Pause, Play } from 'lucide-react';
 import { flowDuration, mixingLayer, profileDomain } from './model';
 
@@ -19,6 +20,17 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
   blh: number | null; temps: ColumnTemp[]; winds: ColumnLevel[]; validLabel: string;
 }) {
   const [paused, setPaused] = useState(false);
+  const { reduced } = useMotionPolicy();
+  const figureRef = useRef<HTMLElement>(null);
+  // Off-screen pause: the streaks are CSS animations that keep costing main-thread time while nobody can see them. The attribute is
+  // written straight to the element (no React state), so scrolling never re-renders the column. Values, labels and the table are untouched.
+  useEffect(() => {
+    const el = figureRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => el.setAttribute('data-offscreen', String(!e.isIntersecting)));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const ml = mixingLayer(blh, CEIL);
   const dom = profileDomain(temps.map((t) => t.t));
   const x = (t: number) => (dom ? X0 + ((t - dom[0]) / (dom[1] - dom[0])) * (X1 - X0) : X0);
@@ -34,12 +46,17 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
   ].join(' ');
 
   return (
-    <figure className={`cc-column ${paused ? 'is-paused' : ''}`}>
+    <figure ref={figureRef} className={`cc-column ${paused ? 'is-paused' : ''}`}>
       <div className="cc-column__bar">
         <figcaption className="cc-column__cap">Atmospheric column · lowest {CEIL} m · model field, valid {validLabel}</figcaption>
-        <button className="cc-icon-btn" onClick={() => setPaused((v) => !v)} aria-pressed={paused} aria-label={paused ? 'Resume wind flow animation' : 'Pause wind flow animation'}>
-          {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
-        </button>
+        {reduced ? (
+          <span className="cc-column__note">Wind animation off (reduced motion)</span>
+        ) : (
+          <button className="cc-icon-btn cc-column__toggle" onClick={() => setPaused((v) => !v)} aria-pressed={paused} aria-label={paused ? 'Resume wind flow animation' : 'Pause wind flow animation'}>
+            {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+            <span aria-hidden="true">{paused ? 'Resume' : 'Pause'}</span>
+          </button>
+        )}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="cc-column__svg">
         {/* height grid */}
