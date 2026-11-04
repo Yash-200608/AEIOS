@@ -149,9 +149,10 @@
 .cc-col-flow { stroke: var(--aeios-source-regional); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 14 64; opacity: 0.85; animation: cc-flow linear infinite; }
 .cc-column.is-paused .cc-col-flow,
 .cc-column[data-offscreen='true'] .cc-col-flow { animation-play-state: paused; }
-@keyframes cc-flow { from { stroke-dashoffset: 78; } to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .cc-col-flow { animation: none; stroke-dasharray: 14 18; } }
-.aeios-force-reduced-motion .cc-col-flow { animation: none; stroke-dasharray: 14 18; }
+@keyframes cc-flow { from { transform: translateX(0); } to { transform: translateX(78px); } } /* one dash period; see AtmosphericColumn.tsx */
+/* Static dashes; the offset puts them where they were before the line was extended one period to the left. */
+@media (prefers-reduced-motion: reduce) { .cc-col-flow { animation: none; stroke-dasharray: 14 18; stroke-dashoffset: 18; } }
+.aeios-force-reduced-motion .cc-col-flow { animation: none; stroke-dasharray: 14 18; stroke-dashoffset: 18; }
 .cc-col-wind { fill: var(--aeios-text-primary); font-size: 17px; font-family: var(--aeios-font-mono); }
 .cc-col-arrow path { fill: var(--aeios-text-secondary); }
 .cc-col-temp { fill: none; stroke: var(--aeios-text-primary); stroke-width: 2.5; stroke-linejoin: round; }

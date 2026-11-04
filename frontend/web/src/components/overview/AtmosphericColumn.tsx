@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useMotionPolicy } from '../../motion/useMotionPolicy';
 import { Navigation, Pause, Play } from 'lucide-react';
 import { flowDuration, mixingLayer, profileDomain } from './model';
@@ -10,6 +10,10 @@ const CEIL = 200;                       // metres shown: the model levels used f
 const W = 410, H = 300;
 const X0 = 62, X1 = 236, Y0 = 262, Y1 = 22; // plot box; wind labels sit in the gutter to the right of X1
 const y = (h: number) => Y0 - (Math.min(h, CEIL) / CEIL) * (Y0 - Y1);
+// Streaks: dash 14, gap 64. The line is one period longer on the left and is translated right by one period per cycle inside a clip,
+// so the dashes move exactly as a dash-offset animation would, but as a transform the browser can run off the main thread
+// (measured: about 196 -> 14 ms/s of main-thread time with the column visible; docs/design/phase2b/WIND_ANIMATION_OPTIMIZATION.md).
+const FLOW_PERIOD = 78;
 
 /**
  * Model-derived vertical profile of the lowest 200 m above the site (Open-Meteo, selected hour).
@@ -22,6 +26,7 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
   const [paused, setPaused] = useState(false);
   const { reduced } = useMotionPolicy();
   const figureRef = useRef<HTMLElement>(null);
+  const clipBase = `cc-flow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`; // unique per column (the Lab renders a second one)
   const [entered, setEntered] = useState(false); // first time on screen: the mixing layer rises once (a visual introduction only)
   const [hot, setHot] = useState<number | null>(null); // the height the operator has selected or focused
   // Off-screen pause: the streaks are CSS animations that keep costing main-thread time while nobody can see them. The attribute is
@@ -107,7 +112,12 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
             >
               <rect x={X0 - 4} y={y(w.h) - 18} width={W - X0 + 4} height={36} className="cc-col-lanebg" />
               {dur !== null && (
-                <line x1={X0} x2={X1} y1={y(w.h)} y2={y(w.h)} className="cc-col-flow" style={{ animationDuration: `${dur}s` }} />
+                <g clipPath={`url(#${clipBase}-${w.h})`}>
+                  <clipPath id={`${clipBase}-${w.h}`}>
+                    <rect x={X0 - 1.25} y={y(w.h) - 3} width={X1 - X0 + 2.5} height={6} />
+                  </clipPath>
+                  <line x1={X0 - FLOW_PERIOD} x2={X1} y1={y(w.h)} y2={y(w.h)} className="cc-col-flow" style={{ animationDuration: `${dur}s` }} />
+                </g>
               )}
               <text x={X1 + 12} y={y(w.h) + 5} className="cc-col-wind">
                 <tspan className="cc-col-windh">{w.h} m</tspan>
