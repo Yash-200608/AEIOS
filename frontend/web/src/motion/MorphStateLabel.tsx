@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { AnimatePresence, m } from 'motion/react';
+import { forwardRef, type ReactNode } from 'react';
+import { AnimatePresence, m, useIsPresent, type Transition } from 'motion/react';
 import { StateLabel, type OperationalState } from '../design/primitives';
 import { motionTokens } from '../design/motion';
 import { useMotionPolicy } from './useMotionPolicy';
@@ -14,8 +14,31 @@ import { useMotionReady } from './MotionReady';
  * (for example a site switch) does not animate either. No size animation: Motion's layout animation needs the larger feature
  * bundle, which is not worth it for a label this small.
  *
+ * While the outgoing label fades (about 120 ms) it is still in the DOM; it is marked aria-hidden so assistive technology only ever
+ * sees the current state (found by the Phase 2B accessibility audit).
+ *
  * Outside <MotionReady> (no LazyMotion provider; <RevealRoot> includes it) it is the plain <StateLabel>. Reduced motion swaps instantly.
  */
+/** One label in the swap. popLayout needs the ref; useIsPresent tells us when this copy is the one leaving. */
+const MorphItem = forwardRef<HTMLSpanElement, { transition: Transition; children: ReactNode }>(function MorphItem(
+  { transition, children },
+  ref,
+) {
+  const present = useIsPresent();
+  return (
+    <m.span
+      ref={ref}
+      aria-hidden={present ? undefined : true}
+      initial={{ opacity: 0, filter: 'blur(3px)' }}
+      animate={{ opacity: 1, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, filter: 'blur(3px)' }}
+      transition={transition}
+    >
+      {children}
+    </m.span>
+  );
+});
+
 export default function MorphStateLabel({ state, scope, children }: { state: OperationalState; scope?: string; children?: ReactNode }) {
   const ready = useMotionReady();
   const { reduced } = useMotionPolicy();
@@ -25,21 +48,18 @@ export default function MorphStateLabel({ state, scope, children }: { state: Ope
         {children}
       </StateLabel>
     );
-  const t = { duration: motionTokens.duration.instant, ease: [...motionTokens.ease.standard] as [number, number, number, number] };
+  const t: Transition = {
+    duration: motionTokens.duration.instant,
+    ease: [...motionTokens.ease.standard] as [number, number, number, number],
+  };
   return (
     <span className="cc-morph">
       <AnimatePresence initial={false} mode="popLayout">
-        <m.span
-          key={state}
-          initial={{ opacity: 0, filter: 'blur(3px)' }}
-          animate={{ opacity: 1, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, filter: 'blur(3px)' }}
-          transition={t}
-        >
+        <MorphItem key={state} transition={t}>
           <StateLabel state={state} scope={scope}>
             {children}
           </StateLabel>
-        </m.span>
+        </MorphItem>
       </AnimatePresence>
     </span>
   );
