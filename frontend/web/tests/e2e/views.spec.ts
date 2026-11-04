@@ -25,7 +25,9 @@ const hash = (page: Page) => page.evaluate(() => window.location.hash);
 const search = (page: Page) => page.evaluate(() => window.location.search);
 /** The heading a view change moves focus to: the ViewHero title, or on the Overview its situation statement. */
 const heading = (page: Page, view: ViewKey) =>
-  view === 'overview' ? page.locator('h1.cc-statement') : page.locator(`[data-view-id="${view}"] [data-view-heading]`);
+  view === 'overview'
+    ? page.locator('[data-testid="globe-hero"] [data-view-heading]') // the visible landing title, not the h1 below the fold
+    : page.locator(`[data-view-id="${view}"] [data-view-heading]`);
 
 /** Everything that must be true once a view is open and settled. */
 async function expectViewOpen(page: Page, view: ViewKey) {

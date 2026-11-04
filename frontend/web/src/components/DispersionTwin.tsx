@@ -17,6 +17,17 @@ const L_KM = 48, TOP_KM = 2.4, VZ = 8;                                          
 const THRESH = [15, 60, 150];                                                    // ug/m3 increments: WHO daily guideline, India 24 h standard, heavy
 const RES = { standard: { nx: 64, ny: 64, nz: 16 }, fine: { nx: 96, ny: 96, nz: 24 } } as const;
 const HORIZON_H = 12;
+// The view remounts on every visit; one wind request (with its retries) is shared across visits for 15 minutes, so
+// navigating back and forth never spends the Open-Meteo allowance again. A failed request is not kept.
+const MET_TTL_MS = 15 * 60 * 1000;
+let metCache: { at: number; promise: Promise<LocalMet> } | null = null;
+function sharedMet(): Promise<LocalMet> {
+  if (metCache && Date.now() - metCache.at < MET_TTL_MS) return metCache.promise;
+  const entry = { at: Date.now(), promise: withMinuteRetry(() => fetchLocalMet(DOMAIN, Date.now(), HORIZON_H)) };
+  entry.promise.catch(() => { if (metCache === entry) metCache = null; });
+  metCache = entry;
+  return entry.promise;
+}
 
 const ist = (ms: number) => new Date(ms).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 const fmt = (x: number) => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
@@ -76,7 +87,7 @@ function DispersionTwinInner() {
   useEffect(() => {
     let alive = true;
     // winds first, then terrain: the terrain request is large and should not compete with them for the per-minute allowance
-    withMinuteRetry(() => fetchLocalMet(DOMAIN, Date.now(), HORIZON_H))
+    sharedMet()
       .then((m) => { if (alive) { setMet(m); setMetErr(''); setMode('forecast'); } })
       .catch((e) => { if (alive) { setMetErr(String(e.message || e)); setMode('manual'); } })
       .finally(() => { if (alive) fetchTerrain(DOMAIN, 16).then((t) => alive && setTerrain(t)); });
@@ -128,7 +139,7 @@ function DispersionTwinInner() {
     const ro = new ResizeObserver(resize); ro.observe(host); resize();
     three.current = { scene, camera, renderer, controls, plume, wind, curtain, terrain: null, srcMarker, render };
     return () => {
-      ro.disconnect(); controls.dispose(); renderer.dispose();
+      ro.disconnect(); controls.dispose(); renderer.dispose(); renderer.forceContextLoss();
       scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); const mat = m.material as THREE.Material | undefined; if (mat && 'dispose' in mat) mat.dispose(); });
       host.removeChild(renderer.domElement); three.current = null;
     };

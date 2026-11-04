@@ -95,6 +95,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
       const firstDate = String(forecastResult.data.daily?.time?.[0] || '');
       setSelectedDate((old) => old || firstDate);
     } catch (error) {
+      // api.forecast falls back to a cached run for this site and horizon whenever one exists, so a throw means none does:
+      // whatever is still in state belongs to another site or horizon and must not be shown under this one.
+      setWeather(null);
+      setForecastMeta(null);
+      setStation(null);
       setLoadState('error');
       console.error(error);
     }

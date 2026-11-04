@@ -218,7 +218,8 @@ export default function GlobeHero({ primary, secondary, kicker, title, children,
     >
       <div className="globe-hero__copy">
         {kicker && <p className="globe-hero__kicker">{kicker}</p>}
-        <h2 id={titleId} className="globe-hero__title globe-reveal" style={order(0)}>
+        {/* data-view-heading: a view change into the Overview focuses this visible landing title, not the h1 below the fold. */}
+        <h2 id={titleId} className="globe-hero__title globe-reveal" style={order(0)} data-view-heading>
           {title}
         </h2>
         {children && (
