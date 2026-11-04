@@ -22,12 +22,17 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
   const [paused, setPaused] = useState(false);
   const { reduced } = useMotionPolicy();
   const figureRef = useRef<HTMLElement>(null);
+  const [entered, setEntered] = useState(false); // first time on screen: the mixing layer rises once (a visual introduction only)
+  const [hot, setHot] = useState<number | null>(null); // the height the operator has selected or focused
   // Off-screen pause: the streaks are CSS animations that keep costing main-thread time while nobody can see them. The attribute is
   // written straight to the element (no React state), so scrolling never re-renders the column. Values, labels and the table are untouched.
   useEffect(() => {
     const el = figureRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(([e]) => el.setAttribute('data-offscreen', String(!e.isIntersecting)));
+    const io = new IntersectionObserver(([e]) => {
+      el.setAttribute('data-offscreen', String(!e.isIntersecting));
+      if (e.isIntersecting) setEntered(true); // idempotent: only the first call re-renders
+    });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -46,7 +51,11 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
   ].join(' ');
 
   return (
-    <figure ref={figureRef} className={`cc-column ${paused ? 'is-paused' : ''}`}>
+    <figure
+      ref={figureRef}
+      className={`cc-column ${paused ? 'is-paused' : ''}`}
+      data-enter={reduced || typeof IntersectionObserver === 'undefined' || entered ? 'done' : 'pending'}
+    >
       <div className="cc-column__bar">
         <figcaption className="cc-column__cap">Atmospheric column · lowest {CEIL} m · model field, valid {validLabel}</figcaption>
         {reduced ? (
@@ -58,7 +67,7 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
           </button>
         )}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="cc-column__svg">
+      <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={summary} className="cc-column__svg">
         {/* height grid */}
         {[0, 50, 100, 150, 200].map((h) => (
           <g key={h}>
@@ -79,8 +88,24 @@ export default function AtmosphericColumn({ blh, temps, winds, validLabel }: {
         {/* wind flow: one streak lane per model height */}
         {winds.map((w) => {
           const dur = flowDuration(w.speed);
+          const t = temps.find((v) => v.h === w.h)?.t ?? null;
+          const label = `${w.h} m: ${w.speed === null ? 'wind not available' : `${w.speed.toFixed(1)} m/s${w.from ? ` from ${w.from}` : ''}`}${t === null ? '' : `, ${t.toFixed(1)} °C`}`;
+          const off = () => setHot((v) => (v === w.h ? null : v));
           return (
-            <g key={w.h}>
+            <g
+              key={w.h}
+              className={`cc-col-lane ${hot === w.h ? 'is-hot' : ''}`}
+              tabIndex={0}
+              role="img"
+              aria-label={label}
+              onMouseEnter={() => setHot(w.h)}
+              onMouseLeave={off}
+              onFocus={() => setHot(w.h)}
+              onBlur={off}
+              onClick={() => setHot(w.h)}
+              onKeyDown={(e) => e.key === 'Escape' && setHot(null)}
+            >
+              <rect x={X0 - 4} y={y(w.h) - 18} width={W - X0 + 4} height={36} className="cc-col-lanebg" />
               {dur !== null && (
                 <line x1={X0} x2={X1} y1={y(w.h)} y2={y(w.h)} className="cc-col-flow" style={{ animationDuration: `${dur}s` }} />
               )}

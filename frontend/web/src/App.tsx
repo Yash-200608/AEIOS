@@ -9,6 +9,8 @@ import {
   Area, AreaChart, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer,
   Tooltip as ChartTooltip, XAxis, YAxis,
 } from 'recharts';
+import { useActiveSection } from './motion/useActiveSection';
+import { scrollBehavior } from './motion/useMotionPolicy';
 import WeatherScene, { layerNorms, type SceneWeather } from './components/WeatherScene';
 import AreaMap from './components/AreaMap';
 import AeiosPanel from './components/AeiosPanel';
@@ -31,7 +33,7 @@ const SITES: Record<SiteId, { title: string; subtitle: string; lat: number; lon:
 };
 
 const NAV_LABEL: Record<string, string> = {
-  overview: 'Overview', dispersion: 'Pollution dispersion', atmosphere: '3D atmosphere', forecast: 'Forecast', 'air-quality': 'Air quality',
+  overview: 'Overview', dispersion: 'Pollution dispersion', twin: '3D dispersion twin', atmosphere: '3D atmosphere', forecast: 'Forecast', 'air-quality': 'Air quality',
   satellite: 'Satellite', smoke: 'Smoke origin', simulation: 'Simulation lab', aeios: 'AEIOS model', station: 'Station network',
 };
 const COMPACT_QUERY = '(max-width: 980px)';
@@ -131,6 +133,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const [simError, setSimError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   const [nav, setNav] = useState('overview');
+  const lockNav = useActiveSection(Object.keys(NAV_LABEL), setNav); // the nav follows the section actually being read
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [compact, setCompact] = useState(false);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
@@ -323,9 +326,10 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const clearSimulation = () => setSimulation(null);
 
   const navigate = (section: string) => {
+    lockNav(section);
     setNav(section);
     setDrawerOpen(false);
-    document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(section)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   };
 
   const aqiCurrent = numeric((aq?.current as any)?.us_aqi, NaN);
@@ -348,26 +352,26 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
         </div>
         <div className="side-group-label">MONITOR</div>
         <nav className="side-nav" aria-label="Monitor">
-          <button className={nav === 'overview' ? 'active' : ''} aria-current={nav === 'overview' ? 'page' : undefined} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
-          <button className={nav === 'air-quality' ? 'active' : ''} aria-current={nav === 'air-quality' ? 'page' : undefined} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
-          <button className={nav === 'dispersion' ? 'active' : ''} aria-current={nav === 'dispersion' ? 'page' : undefined} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Pollution dispersion</button>
-          <button className={nav === 'twin' ? 'active' : ''} aria-current={nav === 'twin' ? 'page' : undefined} onClick={() => navigate('twin')}><Box size={17} /> 3D dispersion twin</button>
+          <button className={nav === 'overview' ? 'active' : ''} aria-current={nav === 'overview' ? 'location' : undefined} onClick={() => navigate('overview')}><Activity size={17} /> Overview</button>
+          <button className={nav === 'air-quality' ? 'active' : ''} aria-current={nav === 'air-quality' ? 'location' : undefined} onClick={() => navigate('air-quality')}><Wind size={17} /> Air quality</button>
+          <button className={nav === 'dispersion' ? 'active' : ''} aria-current={nav === 'dispersion' ? 'location' : undefined} onClick={() => navigate('dispersion')}><CloudFog size={17} /> Pollution dispersion</button>
+          <button className={nav === 'twin' ? 'active' : ''} aria-current={nav === 'twin' ? 'location' : undefined} onClick={() => navigate('twin')}><Box size={17} /> 3D dispersion twin</button>
         </nav>
         <div className="side-group-label">EXPLORE</div>
         <nav className="side-nav" aria-label="Explore">
-          <button className={nav === 'forecast' ? 'active' : ''} aria-current={nav === 'forecast' ? 'page' : undefined} onClick={() => navigate('forecast')}><CalendarDays size={17} /> Forecast</button>
-          <button className={nav === 'smoke' ? 'active' : ''} aria-current={nav === 'smoke' ? 'page' : undefined} onClick={() => navigate('smoke')}><Flame size={17} /> Smoke origin</button>
-          <button className={nav === 'satellite' ? 'active' : ''} aria-current={nav === 'satellite' ? 'page' : undefined} onClick={() => navigate('satellite')}><Satellite size={17} /> Satellite</button>
-          <button className={nav === 'atmosphere' ? 'active' : ''} aria-current={nav === 'atmosphere' ? 'page' : undefined} onClick={() => navigate('atmosphere')}><Globe2 size={17} /> 3D atmosphere</button>
+          <button className={nav === 'forecast' ? 'active' : ''} aria-current={nav === 'forecast' ? 'location' : undefined} onClick={() => navigate('forecast')}><CalendarDays size={17} /> Forecast</button>
+          <button className={nav === 'smoke' ? 'active' : ''} aria-current={nav === 'smoke' ? 'location' : undefined} onClick={() => navigate('smoke')}><Flame size={17} /> Smoke origin</button>
+          <button className={nav === 'satellite' ? 'active' : ''} aria-current={nav === 'satellite' ? 'location' : undefined} onClick={() => navigate('satellite')}><Satellite size={17} /> Satellite</button>
+          <button className={nav === 'atmosphere' ? 'active' : ''} aria-current={nav === 'atmosphere' ? 'location' : undefined} onClick={() => navigate('atmosphere')}><Globe2 size={17} /> 3D atmosphere</button>
         </nav>
         <div className="side-group-label">TOOLS</div>
         <nav className="side-nav" aria-label="Tools">
-          <button className={nav === 'simulation' ? 'active' : ''} aria-current={nav === 'simulation' ? 'page' : undefined} onClick={() => navigate('simulation')}><Layers3 size={17} /> Simulation lab</button>
+          <button className={nav === 'simulation' ? 'active' : ''} aria-current={nav === 'simulation' ? 'location' : undefined} onClick={() => navigate('simulation')}><Layers3 size={17} /> Simulation lab</button>
         </nav>
         <div className="side-group-label">INFRASTRUCTURE</div>
         <nav className="side-nav" aria-label="Infrastructure">
-          <button className={nav === 'aeios' ? 'active' : ''} aria-current={nav === 'aeios' ? 'page' : undefined} onClick={() => navigate('aeios')}><Zap size={17} /> AEIOS model</button>
-          <button className={nav === 'station' ? 'active' : ''} aria-current={nav === 'station' ? 'page' : undefined} onClick={() => navigate('station')}><RadioTower size={17} /> Station network</button>
+          <button className={nav === 'aeios' ? 'active' : ''} aria-current={nav === 'aeios' ? 'location' : undefined} onClick={() => navigate('aeios')}><Zap size={17} /> AEIOS model</button>
+          <button className={nav === 'station' ? 'active' : ''} aria-current={nav === 'station' ? 'location' : undefined} onClick={() => navigate('station')}><RadioTower size={17} /> Station network</button>
         </nav>
         <div className="sidebar-divider" />
         <div className="side-group-label">OBSERVATION ZONES</div>

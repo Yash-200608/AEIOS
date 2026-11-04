@@ -5,7 +5,7 @@ import { EmptyState, type OperationalState } from '../../design/primitives';
 import { compass, numeric, type WeatherPayload } from '../../lib/api';
 import { CALM_WIND_KMH, dispersionClass, inversion, meanLowWind, ventilation, VENTILATION_POOR } from '../../lib/derived';
 import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeFreshness, siteReading, useAeios } from '../../lib/freshness';
-import { RevealControls, RevealGroup, RevealRoot } from '../../motion/reveal';
+import { EnterOnce, RevealControls, RevealGroup, RevealRoot } from '../../motion/reveal';
 import { useAlerts } from '../SmokeAlerts';
 import AlertSummary from './AlertSummary';
 import EnvironmentalAssessment from './EnvironmentalAssessment';
@@ -159,13 +159,13 @@ export default function Overview(p: OverviewProps) {
           <RevealGroup group="outlook" className="cc-band__outlook"><OutlookRibbon rows={outlookRows} poorAt={VENTILATION_POOR} loadState={loadState} onNavigate={p.onNavigate} /></RevealGroup>
         </div>
         <div className="cc-grid">
-          <div className="cc-span-12">
+          <EnterOnce className="cc-span-12">
             <RegionalContext
               weather={{ temp: fixed(p.current.temperature_2m, 1), humidity: fixed(p.current.relative_humidity_2m), wind: fixed(p.current.wind_speed_10m, 1), windDir: compass(p.current.wind_direction_10m) ? `from ${compass(p.current.wind_direction_10m)}` : '', pressure: fixed(p.current.pressure_msl), uv: fixed(p.current.uv_index, 1) }}
               aqi={aqiNumber} aqPm25={fixed((p.aq?.current as any)?.pm2_5)} aqWarning={p.aqWarning} aqAvailable={p.aq !== null}
             />
-          </div>
-          <div className="cc-span-12"><OverviewDestinations onNavigate={p.onNavigate} /></div>
+          </EnterOnce>
+          <EnterOnce className="cc-span-12"><OverviewDestinations onNavigate={p.onNavigate} /></EnterOnce>
         </div>
       </RevealRoot>
     </section>

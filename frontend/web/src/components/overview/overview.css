@@ -242,3 +242,24 @@
 .cc-reveal-btn:hover { color: var(--aeios-text-primary); border-color: var(--aeios-border-subtle); }
 .cc-reveal-btn:focus-visible { outline: 2px solid var(--aeios-focus-ring); outline-offset: 2px; }
 .cc-morph { position: relative; display: inline-flex; }
+
+/* Focal shift: the selected height leads and the other lanes' streaks recede. Text is never dimmed, so contrast is unchanged. */
+.cc-col-lane { cursor: pointer; outline: none; }
+.cc-col-lanebg { fill: transparent; stroke: transparent; stroke-width: 2; transition: fill var(--aeios-dur-micro) var(--aeios-ease); }
+.cc-col-lane.is-hot .cc-col-lanebg { fill: var(--aeios-surface-2); stroke: var(--aeios-border-strong); }
+.cc-col-lane:focus-visible .cc-col-lanebg { stroke: var(--aeios-focus-ring); stroke-width: 3; }
+.cc-col-flow { transition: opacity var(--aeios-dur-micro) var(--aeios-ease); }
+.cc-column:has(.cc-col-lane.is-hot) .cc-col-lane:not(.is-hot) .cc-col-flow { opacity: 0.35; }
+.cc-col-lane.is-hot .cc-col-flow { opacity: 1; stroke-width: 3.5; }
+
+/* Mixing-layer introduction: the band rises once from the ground to its modelled height the first time the column is on screen.
+   The geometry is always the real one; only a transform and an opacity animate, and not at all under reduced motion. */
+.cc-col-mix { transform-box: fill-box; transform-origin: bottom; }
+.cc-column[data-enter='pending'] .cc-col-mix { transform: scaleY(0); }
+.cc-column[data-enter='pending'] .cc-col-mixtop,
+.cc-column[data-enter='pending'] .cc-col-label { opacity: 0; }
+.cc-column[data-enter='done'] .cc-col-mix { transition: transform var(--aeios-dur-nav) var(--aeios-ease) 0.15s; }
+.cc-column[data-enter='done'] .cc-col-mixtop,
+.cc-column[data-enter='done'] .cc-col-label { transition: opacity var(--aeios-dur-state) var(--aeios-ease) 0.3s; }
+@media (prefers-reduced-motion: reduce) { .cc-col-mix, .cc-col-mixtop, .cc-col-label { transform: none !important; opacity: 1 !important; transition: none !important; } }
+.aeios-force-reduced-motion .cc-col-mix, .aeios-force-reduced-motion .cc-col-mixtop, .aeios-force-reduced-motion .cc-col-label { transform: none !important; opacity: 1 !important; transition: none !important; }

@@ -182,6 +182,29 @@ export function RevealCell({ index, ...rest }: { index: number } & LiProps) {
   );
 }
 
+/**
+ * One-time scroll entrance for a long lower section (opacity and 16 px, the first time 20% of it is on screen). Used only for
+ * Regional context and Destinations, never per card. Because it is `once`, data arriving later cannot trigger it again.
+ * It exists only when the intro played this session (same once-per-session rule) and never under reduced motion; otherwise a plain div.
+ */
+export function EnterOnce({ className, children }: { className?: string; children: ReactNode }) {
+  const ctx = useReveal();
+  const { reduced } = useMotionPolicy();
+  if (!ctx || !ctx.startHidden || reduced) return <div className={className}>{children}</div>;
+  return (
+    <m.div
+      className={className}
+      data-enter-once=""
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: motionTokens.duration.reveal, ease: [...motionTokens.ease.enter] }}
+    >
+      {children}
+    </m.div>
+  );
+}
+
 /** Skip and Replay. Real buttons; the state is exposed as data-reveal-state on the root, not as a live region. */
 export function RevealControls() {
   const ctx = useReveal();
