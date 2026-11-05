@@ -1,15 +1,5 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
-import {
-  inView,
-  m,
-  useAnimationControls,
-  useMotionValue,
-  useScroll,
-  useSpring,
-  useTransform,
-  type MotionValue,
-  type Variants,
-} from 'motion/react';
+import { Fragment, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { inView, m, useAnimationControls, useMotionValue, useSpring, type MotionValue, type Variants } from 'motion/react';
 import { motionTokens } from '../design/motion';
 import MotionReady, { useMotionReady } from './MotionReady';
 import { prefersReducedMotion, useMotionPolicy } from './useMotionPolicy';
@@ -31,10 +21,13 @@ import './scroll.css';
  *    view has settled (late data). A failsafe forces the end state if an entrance does not report completion.
  *    Marker: data-reveal-on-scroll="pending" | "shown" ("shown" once the entrance has finished or when none will run).
  *  - <ViewHero>: the header band of every non-overview view: kicker, <h1 tabIndex={-1} data-view-heading>, subtitle, right slot.
- *    Entrance once per mount (kicker slides, accent rule draws, title words rise out of a mask, subtitle and slot follow); a
- *    decorative glow and dot grid behind it drift with the scroll at two depths (transform only). Reduced motion: static.
+ *    Entrance once per mount (kicker slides, accent rule draws, title words rise out of a mask, subtitle and slot follow). Then a
+ *    pinned scene: the band stays at the top while the view's content scrolls up over it, and its exit is scrubbed by the scroll
+ *    (see useHeroScene). Markers: track data-testid="view-hero-track" data-pinned, band data-hero-progress. Reduced motion: static,
+ *    nothing pins.
  *
- * Nothing here sets pointer-events, visibility, focus or scroll position, so input is never blocked. Values are never tweened.
+ * Nothing here sets pointer-events, visibility or focus, so input is never blocked; the only scroll write is the hero's return to
+ * a covered band when focus enters it. Values are never tweened.
  */
 
 const ATTR = 'data-reveal-on-scroll';
@@ -341,12 +334,75 @@ function StaticViewHero({ kicker, title, subtitle, right }: ViewHeroProps) {
   );
 }
 
+/** Gap between the pinned band and the top of the viewport. */
+const HERO_PIN_TOP = 12;
+
+/**
+ * The pinned scene (motion allowed): the band is sticky inside a track whose runway is as long as the band itself (plus the gap
+ * under it), and the track's negative bottom margin pulls the view's content back up to where it was, so the content scrolls up
+ * over the pinned band like a sheet. Progress through the runway (0..1) is written once per frame as --vp on the band; scroll.css
+ * derives the exit from it (title words sink back into their masks, the subtitle fades, the rule stretches, the glow drifts).
+ * Focus entering a covered band scrolls back to it.
+ */
+function useHeroScene(track: RefObject<HTMLDivElement | null>, band: RefObject<HTMLElement | null>, enabled: boolean): void {
+  useEffect(() => {
+    const trackEl = track.current;
+    const bandEl = band.current;
+    if (!trackEl || !bandEl) return;
+    let raf = 0;
+    let last = -1;
+    const write = (p: number) => {
+      if (Math.abs(p - last) < 0.0005) return;
+      last = p;
+      bandEl.style.setProperty('--vp', p.toFixed(4));
+      bandEl.dataset.heroProgress = p.toFixed(2);
+    };
+    const progressNow = () => {
+      const runway = trackEl.querySelector<HTMLElement>('.view-hero-track__runway')?.offsetHeight ?? 0;
+      const top = trackEl.getBoundingClientRect().top;
+      return runway > 1 ? Math.min(1, Math.max(0, (HERO_PIN_TOP - top) / runway)) : 0;
+    };
+    const measure = () => {
+      raf = 0;
+      write(enabled ? progressNow() : 0);
+    };
+    const schedule = () => {
+      if (!raf) raf = window.requestAnimationFrame(measure);
+    };
+    const layout = () => {
+      trackEl.style.setProperty('--vh-h', `${bandEl.offsetHeight}px`);
+      schedule();
+    };
+    // Only for focus a user moves (Tab to a control in the band). The heading is focused by the shell with preventScroll while
+    // it manages the scroll itself, so it is left alone. Measured now, not from the last frame.
+    const onFocusIn = (event: FocusEvent) => {
+      if (!enabled || (event.target instanceof Element && event.target.closest('[data-view-heading]'))) return;
+      if (progressNow() < 0.2) return;
+      window.scrollTo({ top: window.scrollY + trackEl.getBoundingClientRect().top - HERO_PIN_TOP, behavior: 'instant' });
+    };
+    layout();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(layout);
+    ro?.observe(bandEl);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', layout);
+    bandEl.addEventListener('focusin', onFocusIn);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', layout);
+      bandEl.removeEventListener('focusin', onFocusIn);
+    };
+  }, [track, band, enabled]);
+}
+
 function MotionViewHero({ kicker, title, subtitle, right }: ViewHeroProps) {
   const { reduced } = useMotionPolicy();
   const controls = useAnimationControls();
-  const { scrollY } = useScroll();
-  const glowY = useTransform(scrollY, [0, 640], [0, 150]); // clamped: no further updates once the band has scrolled away
-  const gridY = useTransform(scrollY, [0, 640], [0, 48]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const bandRef = useRef<HTMLElement>(null);
+  const pinned = !reduced;
+  useHeroScene(trackRef, bandRef, pinned);
   const words = title.split(/\s+/).filter(Boolean);
 
   // The entrance: hidden start state set before the first paint, then played. Driven by controls rather than `initial`, so it also
@@ -365,41 +421,44 @@ function MotionViewHero({ kicker, title, subtitle, right }: ViewHeroProps) {
   }, [reduced, controls]);
 
   return (
-    <m.header className="view-hero" initial={false} animate={controls}>
-      <div className="view-hero__backdrop" aria-hidden="true">
-        <m.div className="view-hero__grid" style={{ y: reduced ? 0 : gridY }} />
-        <m.div className="view-hero__glow" style={{ y: reduced ? 0 : glowY }}>
-          <m.span className="view-hero__glow-core" variants={glowV} />
-        </m.div>
-      </div>
-      <div className="view-hero__main">
-        <m.div className="view-hero__kicker" variants={kickerV}>
-          <m.span className="view-hero__rule" variants={ruleV} />
-          <span>{kicker}</span>
-        </m.div>
-        <h1 tabIndex={-1} data-view-heading="" className="view-hero__title">
-          {words.map((word, i) => (
-            <Fragment key={i}>
-              {i > 0 && ' '}
-              <span className="view-hero__word">
-                <m.span className="view-hero__word-inner" custom={i} variants={wordV}>
-                  {word}
-                </m.span>
-              </span>
-            </Fragment>
-          ))}
-        </h1>
-        {subtitle && (
-          <m.p className="view-hero__subtitle" variants={subtitleV}>
-            {subtitle}
-          </m.p>
+    <div ref={trackRef} className="view-hero-track" data-testid="view-hero-track" data-pinned={pinned ? 'true' : 'false'}>
+      <m.header ref={bandRef} className="view-hero" initial={false} animate={controls}>
+        <div className="view-hero__backdrop" aria-hidden="true">
+          <div className="view-hero__grid" />
+          <div className="view-hero__glow">
+            <m.span className="view-hero__glow-core" variants={glowV} />
+          </div>
+        </div>
+        <div className="view-hero__main">
+          <m.div className="view-hero__kicker" variants={kickerV}>
+            <m.span className="view-hero__rule" variants={ruleV} />
+            <span>{kicker}</span>
+          </m.div>
+          <h1 tabIndex={-1} data-view-heading="" className="view-hero__title">
+            {words.map((word, i) => (
+              <Fragment key={i}>
+                {i > 0 && ' '}
+                <span className="view-hero__word" style={{ '--i': i } as CSSProperties}>
+                  <m.span className="view-hero__word-inner" custom={i} variants={wordV}>
+                    {word}
+                  </m.span>
+                </span>
+              </Fragment>
+            ))}
+          </h1>
+          {subtitle && (
+            <m.p className="view-hero__subtitle" variants={subtitleV}>
+              {subtitle}
+            </m.p>
+          )}
+        </div>
+        {right && (
+          <m.div className="view-hero__right" variants={rightV}>
+            {right}
+          </m.div>
         )}
-      </div>
-      {right && (
-        <m.div className="view-hero__right" variants={rightV}>
-          {right}
-        </m.div>
-      )}
-    </m.header>
+      </m.header>
+      {pinned && <div className="view-hero-track__runway" aria-hidden="true" />}
+    </div>
   );
 }

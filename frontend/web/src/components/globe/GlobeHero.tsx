@@ -250,15 +250,14 @@ export default function GlobeHero({ primary, secondary, kicker, title, children,
       engine.setDescent(clamp01((p - DESCENT_FROM) / (DESCENT_TO - DESCENT_FROM)));
     };
 
-    const measure = () => {
-      raf = 0;
-      if (!pinned) {
-        write(0);
-        return;
-      }
+    const progressNow = () => {
       const rect = track.getBoundingClientRect();
       const runway = rect.height - hero.offsetHeight;
-      write(runway > 1 ? clamp01((pinTop - rect.top) / runway) : 0);
+      return runway > 1 ? clamp01((pinTop - rect.top) / runway) : 0;
+    };
+    const measure = () => {
+      raf = 0;
+      write(pinned ? progressNow() : 0);
     };
     const schedule = () => {
       if (!raf) raf = window.requestAnimationFrame(measure);
@@ -273,10 +272,12 @@ export default function GlobeHero({ primary, secondary, kicker, title, children,
     };
 
     // Keyboard focus entering the faded-out copy: back to the start of the track, where it is visible.
+    // Only for focus a user moves (Tab to the call to action or a control). Measured now, not from the last frame.
     const onFocusIn = (event: FocusEvent) => {
-      if (!pinned || lastP < 0.05) return;
+      if (!pinned || progressNow() < 0.05) return;
       const t = event.target;
       if (!(t instanceof Element) || !t.closest('.globe-hero__copy, .globe-hero__controls')) return;
+      if (t.closest('[data-view-heading]')) return; // focused by the shell with preventScroll; it manages the scroll itself
       window.scrollTo({ top: window.scrollY + track.getBoundingClientRect().top - pinTop, behavior: 'instant' });
     };
 

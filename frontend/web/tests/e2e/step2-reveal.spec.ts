@@ -41,6 +41,13 @@ test('the reveal waits below the globe landing, then plays when the command cent
 
 test('"Open the command center" starts the reveal and moves focus to the situation statement', async ({ page }) => {
   await open(page);
+  // Where the globe hero pins, its call to action is fully on screen (a user scrolls there to reach it). Left to itself, a
+  // click would keep scrolling to centre the pinned button, which only advances the globe descent and fades the button out.
+  await page.getByTestId('globe-track').evaluate((el) => {
+    const hero = el.querySelector<HTMLElement>('[data-testid="globe-hero"]');
+    const pinTop = Number.parseFloat(hero?.style.getPropertyValue('--globe-pin-top') || '12');
+    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - pinTop, behavior: 'instant' });
+  });
   await page.getByRole('button', { name: 'Open the command center' }).click();
   await expect(page.locator('h1.cc-statement')).toBeFocused();
   await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-state', 'done', { timeout: 4_000 });

@@ -52,8 +52,15 @@
 }
 
 /* Separates a view's hero band from its first panel (outer spacing only; ViewHero owns its inner layout). */
-.view > .view-hero {
+.view > .view-hero,
+.view > .view-hero-track {
   margin-bottom: var(--aeios-space-8);
+}
+
+/* Pinned hero scene (scroll.css): the track's runway is cancelled by a negative margin, so the content keeps its place and then
+   scrolls up over the pinned band. */
+.view > .view-hero-track[data-pinned='true'] {
+  margin-bottom: calc(var(--aeios-space-8) - var(--vh-r));
 }
 
 /* Overview landing: facts and the call to action under the globe title. */

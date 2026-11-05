@@ -2,10 +2,12 @@
  * Scroll takeover: gliding mouse-wheel scrolling (src/motion/smoothWheel.ts) and the pinned globe descent on the Overview
  * (GlobeHero.tsx). The wheel eases toward its target instead of jumping; keyboard, scrollbar and scripted scrolls stay native and
  * stop a glide at once; inner scrollers keep their own wheel. The globe hero pins over a runway while scrolling flies the camera
- * down to the site through three captions, then releases. Reduced motion: native wheel, no pin.
+ * down to the site through three captions, then releases. Every other view's header band pins while the content scrolls up over
+ * it (the band is masked away under the content; its title words sink back into their masks). Reduced motion: native wheel, no
+ * pin anywhere.
  */
 import type { Page } from '@playwright/test';
-import { expect, hasHorizontalOverflow, intAttr, openView, scrollToY, test } from './support';
+import { VIEW_KEYS, expect, hasHorizontalOverflow, intAttr, openView, scrollToY, test, type ViewKey } from './support';
 
 const hero = (page: Page) => page.getByTestId('globe-hero');
 const track = (page: Page) => page.getByTestId('globe-track');
@@ -172,5 +174,86 @@ test.describe('pinned globe descent', () => {
     await expect(page.locator('.globe-track__runway')).toHaveCount(0);
     await scrollToY(page, 600);
     await expect.poll(() => descent(page)).toBe(0);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------ pinned view heroes
+
+const heroTrack = (page: Page, view: ViewKey) => page.locator(`[data-view-id="${view}"] [data-testid="view-hero-track"]`);
+const band = (page: Page, view: ViewKey) => heroTrack(page, view).locator('.view-hero');
+const progressOf = async (page: Page, view: ViewKey) =>
+  Number.parseFloat((await band(page, view).getAttribute('data-hero-progress')) ?? 'NaN');
+
+/** Window scroll position at progress `p` through a view hero's runway. */
+async function heroY(page: Page, view: ViewKey, p: number): Promise<number> {
+  return heroTrack(page, view).evaluate((el, progress) => {
+    const runway = el.querySelector<HTMLElement>('.view-hero-track__runway')?.offsetHeight ?? 0;
+    return Math.round(window.scrollY + el.getBoundingClientRect().top - 12 + runway * progress);
+  }, p);
+}
+
+test.describe('pinned view heroes', () => {
+  for (const view of VIEW_KEYS.filter((key) => key !== 'overview')) {
+    test(`${view}: the band pins, the content keeps its place and scrolls over it, then the band leaves`, async ({ page }) => {
+      await openView(page, view);
+      await expect(heroTrack(page, view)).toHaveAttribute('data-pinned', 'true');
+      // The runway is cancelled out in layout: the track takes exactly the band plus one 32 px gap, as before the scene existed
+      // (measured from layout boxes, not screen positions, which entrance transforms move).
+      const footprint = await heroTrack(page, view).evaluate((el) => {
+        const bandEl = el.querySelector<HTMLElement>('.view-hero')!;
+        return el.offsetHeight + Number.parseFloat(getComputedStyle(el).marginBottom) - bandEl.offsetHeight;
+      });
+      expect(Math.abs(footprint - 32), `layout gap under the band (${footprint})`).toBeLessThan(1);
+      // With the test fixture some views are shorter than the runway; extra room at the end lets the whole scene be scrolled.
+      await page.locator(`[data-view-id="${view}"]`).evaluate((el) => {
+        const spacer = document.createElement('div');
+        spacer.style.height = '1600px';
+        el.appendChild(spacer);
+      });
+
+      await scrollToY(page, await heroY(page, view, 0.5));
+      await expect.poll(() => progressOf(page, view)).toBeGreaterThan(0.4);
+      expect(Math.abs((await band(page, view).boundingBox())!.y - 12), 'pinned at the top').toBeLessThan(2);
+      const firstWord = band(page, view).locator('.view-hero__word-inner').first();
+      expect(await firstWord.evaluate((el) => getComputedStyle(el).translate), 'the first title word has sunk').not.toBe('none');
+
+      await scrollToY(page, (await heroY(page, view, 1)) + 300);
+      await expect.poll(async () => (await band(page, view).boundingBox())!.y).toBeLessThan(-100);
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+    });
+  }
+
+  test('focus moving to a control in a covered band scrolls back to it; the shell-focused heading does not', async ({ page }) => {
+    await openView(page, 'forecast');
+    // A control in the band (some views put actions in its right slot).
+    await band(page, 'forecast')
+      .locator('.view-hero__main')
+      .evaluate((el) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'band-control';
+        button.textContent = 'Band control';
+        el.appendChild(button);
+      });
+    await scrollToY(page, await heroY(page, 'forecast', 0.7));
+    await expect.poll(() => progressOf(page, 'forecast')).toBeGreaterThan(0.5);
+    // The heading is focused by the shell with preventScroll (it scrolls itself): left alone.
+    await band(page, 'forecast')
+      .locator('h1')
+      .evaluate((el: HTMLElement) => el.focus({ preventScroll: true }));
+    await page.waitForTimeout(200);
+    expect(await progressOf(page, 'forecast')).toBeGreaterThan(0.5);
+    // A control the user moves focus to is brought back into view.
+    await page.locator('#band-control').focus();
+    await expect.poll(() => progressOf(page, 'forecast')).toBeLessThan(0.02);
+  });
+
+  test('reduced motion: no pin, no runway, no exit', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openView(page, 'forecast');
+    await expect(heroTrack(page, 'forecast')).toHaveAttribute('data-pinned', 'false');
+    await expect(heroTrack(page, 'forecast').locator('.view-hero-track__runway')).toHaveCount(0);
+    await scrollToY(page, 400);
+    await expect.poll(() => progressOf(page, 'forecast')).toBe(0);
   });
 });
