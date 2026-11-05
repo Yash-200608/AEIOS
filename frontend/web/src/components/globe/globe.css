@@ -2,22 +2,46 @@
  * Overview landing globe (GlobeHero.tsx). Tokens only (src/design/tokens.css); the local --globe-* custom properties are
  * durations derived for this component and collapse under reduced motion.
  *
- * Phones and tablets: the globe band sits above the copy (about 52 % of the small viewport height), with the intro controls
- * on its bottom edge.
- * Desktop (>= 1024 px): copy left, globe right, the band fits the first screen (min(78vh, 760px)).
+ * The hero is a full-height stage: the canvas covers all of it, and an empty grid item (.globe-hero__frame) reserves where the
+ * resting globe sits (GlobeHero measures it and the engine frames the globe inside it).
+ * Phones and tablets: the globe frame fills the top of the stage, the copy sits under it, the intro controls on its bottom edge.
+ * Desktop (>= 1024 px): copy left, globe frame right.
+ *
+ * Scroll descent: inside .globe-track[data-globe-pinned='true'] the hero is sticky over a runway; GlobeHero writes the track
+ * progress as --gp (0..1) and every scroll-linked opacity and transform below is derived from it (no transitions on them).
+ *   0.02-0.14  copy and controls fade and lift out
+ *   0.12-0.46  caption 1 (region), 0.44-0.74 caption 2 (site), 0.72-0.94 caption 3 (command center)
+ *   0.86-1.00  the hero recedes (scale, dim) while the command center scrolls up over it
  */
+.globe-track {
+  position: relative;
+}
+
+.globe-track__runway {
+  height: 150vh;
+  pointer-events: none;
+}
+
+.globe-track[data-globe-pinned='true'] > .globe-hero {
+  position: sticky;
+  top: var(--globe-pin-top, 12px);
+}
+
 .globe-hero {
   --globe-reveal-dur: 760ms;
   --globe-reveal-step: 120ms;
   --globe-bar-dur: 900ms;
-  --globe-band: 52vh;
+  --gp: 0;
+  --globe-copy-out: clamp(0, (var(--gp) - 0.02) / 0.12, 1);
+  --globe-release: clamp(0, (var(--gp) - 0.86) / 0.14, 1);
 
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    'visual'
-    'copy';
+  grid-template:
+    'frame' minmax(260px, 1fr)
+    'copy' auto
+    / minmax(0, 1fr);
+  min-height: calc(100vh - 24px);
   overflow: hidden;
   isolation: isolate;
   container-type: inline-size; /* the title scales with the hero's own width, not the viewport */
@@ -28,12 +52,56 @@
     radial-gradient(ellipse 42% 26% at 50% 28%, var(--aeios-tint-live), transparent 74%),
     linear-gradient(180deg, var(--aeios-surface-1) 0%, var(--aeios-canvas) 100%);
   color: var(--aeios-text-primary);
+  transform: scale(calc(1 - 0.05 * var(--globe-release)));
+  transform-origin: 50% 30%;
 }
 
 @supports (height: 1svh) {
   .globe-hero {
-    --globe-band: 52svh;
+    min-height: calc(100svh - 24px);
   }
+
+  .globe-track__runway {
+    height: 150svh;
+  }
+}
+
+/* ---- full-bleed visual and the resting frame ---- */
+.globe-hero__visual {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: calc(1 - 0.55 * var(--globe-release));
+}
+
+.globe-hero__frame {
+  grid-area: frame;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.globe-hero__stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.globe-hero__canvas {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y;
+}
+
+.globe-hero__fallback {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  width: min(64%, 46vh);
+  aspect-ratio: 1;
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, var(--aeios-surface-3), var(--aeios-canvas) 72%);
+  transform: translate(-50%, -50%);
 }
 
 /* ---- copy column ---- */
@@ -46,6 +114,17 @@
   gap: var(--aeios-space-4);
   min-width: 0;
   padding: var(--aeios-space-5) var(--aeios-space-4) var(--aeios-space-6);
+}
+
+.globe-hero__copy,
+.globe-hero__controls {
+  opacity: calc(1 - var(--globe-copy-out));
+  translate: 0 calc(-44px * var(--globe-copy-out));
+}
+
+/* Faded out by the descent: no stray clicks on invisible controls (focus still works and scrolls back, see GlobeHero). */
+.globe-hero:is([data-globe-chapter='1'], [data-globe-chapter='2'], [data-globe-chapter='3']) :is(.globe-hero__copy, .globe-hero__controls) {
+  pointer-events: none;
 }
 
 .globe-hero__kicker {
@@ -114,10 +193,10 @@
 }
 
 /* ---- controls ----
-   Phones/tablets: overlaid on the bottom edge of the globe band (in the letterbox while the intro plays), so Skip is on the
+   Phones/tablets: overlaid on the bottom edge of the globe frame (in the letterbox while the intro plays), so Skip is on the
    first screen. Desktop: under the copy. */
 .globe-hero__controls {
-  grid-area: visual;
+  grid-area: frame;
   place-self: end start;
   position: relative;
   z-index: 5;
@@ -168,7 +247,7 @@
   }
 }
 
-/* Narrow heroes: one compact row across the band's bottom edge (wraps upward only below about 330 px). */
+/* Narrow heroes: one compact row across the frame's bottom edge (wraps upward only below about 330 px). */
 @container (width < 440px) {
   .globe-hero__controls {
     justify-content: space-between;
@@ -182,39 +261,6 @@
     padding: 0 var(--aeios-space-2);
     font-size: var(--aeios-text-xs);
   }
-}
-
-/* ---- globe stage ---- */
-.globe-hero__visual {
-  grid-area: visual;
-  position: relative;
-  min-width: 0;
-}
-
-.globe-hero__stage {
-  position: relative;
-  height: var(--globe-band);
-  min-height: 280px;
-  max-height: 560px;
-  overflow: hidden;
-}
-
-.globe-hero__canvas {
-  position: absolute;
-  inset: 0;
-  touch-action: pan-y;
-}
-
-.globe-hero__fallback {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(72%, 72vh);
-  aspect-ratio: 1;
-  border: 1px solid var(--aeios-border-subtle);
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 32%, var(--aeios-surface-3), var(--aeios-canvas) 72%);
-  transform: translate(-50%, -50%);
 }
 
 /* Site label: the engine moves the outer box to the marker (transform only) and sets data-placed. */
@@ -279,8 +325,7 @@
   font: var(--aeios-text-xs) / 1.25 var(--aeios-font-mono);
 }
 
-/* Cinematic letterbox during the intro; retracts with the copy. Phones: over the globe band only (never over the copy or
-   its controls). Desktop: full width, painted beneath the copy column so text stays on top. */
+/* Cinematic letterbox during the intro; retracts with the copy. Painted under the copy, which stays on top. */
 .globe-hero__letterbox {
   position: absolute;
   inset: 0;
@@ -314,7 +359,7 @@
   transform: scaleY(0);
 }
 
-/* Phones: top-right of the band (the controls hold its bottom edge). Desktop: bottom-right. */
+/* Phones: top-right of the stage (the controls hold the frame's bottom edge). Desktop: bottom-right. */
 .globe-hero__caption {
   position: absolute;
   top: var(--aeios-space-3);
@@ -327,18 +372,143 @@
   pointer-events: none;
 }
 
-/* ---- desktop: copy left, globe right ---- */
-@media (width >= 1024px) {
-  .globe-hero {
-    --globe-band: min(78vh, 760px);
+/* ---- descent captions (a documentary lower third) and the scroll hint ---- */
+.globe-hero__chapters {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
 
+/* A soft scrim under the lower third, so the captions read over the dot matrix. */
+.globe-hero__chapters::before {
+  content: '';
+  position: absolute;
+  inset: 40% 0 0;
+  background:
+    radial-gradient(ellipse 70% 90% at 0% 100%, var(--aeios-canvas) 0%, transparent 70%),
+    linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--aeios-canvas) 70%, transparent) 100%);
+  opacity: clamp(0, (var(--gp) - 0.08) / 0.08, 1);
+}
+
+.globe-chapter {
+  --o: clamp(0, min((var(--gp) - var(--a)) / 0.06, (var(--b) - var(--gp)) / 0.06), 1);
+
+  position: absolute;
+  left: var(--aeios-space-5);
+  right: var(--aeios-space-5);
+  bottom: var(--aeios-space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--aeios-space-2);
+  max-width: 34rem;
+  padding-left: var(--aeios-space-4);
+  border-left: 2px solid var(--aeios-accent);
+  opacity: var(--o);
+  translate: 0 calc((1 - var(--o)) * 18px);
+}
+
+.globe-chapter[data-chapter='1'] {
+  --a: 0.12;
+  --b: 0.46;
+}
+
+.globe-chapter[data-chapter='2'] {
+  --a: 0.44;
+  --b: 0.74;
+}
+
+.globe-chapter[data-chapter='3'] {
+  --a: 0.72;
+  --b: 0.94;
+}
+
+.globe-chapter__kicker {
+  color: var(--aeios-accent);
+  font: 600 var(--aeios-text-xs) / 1.3 var(--aeios-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.globe-chapter__title {
+  color: var(--aeios-text-primary);
+  font: 650 clamp(1.6rem, 7cqi, 3rem) / 1.08 var(--aeios-font-ui);
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 24px var(--aeios-canvas);
+}
+
+.globe-chapter__detail {
+  color: var(--aeios-text-secondary);
+  font: var(--aeios-text-sm) / 1.4 var(--aeios-font-ui);
+  text-shadow: 0 1px 12px var(--aeios-canvas);
+}
+
+.globe-chapter__detail--mono {
+  font-family: var(--aeios-font-mono);
+  font-size: var(--aeios-text-xs);
+}
+
+.globe-hero__hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--aeios-space-4);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--aeios-space-2);
+  color: var(--aeios-text-tertiary);
+  font: 500 var(--aeios-text-xs) / 1 var(--aeios-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: clamp(0, 1 - var(--gp) / 0.05, 1);
+  translate: -50% 0;
+}
+
+.globe-hero__hint-line {
+  position: relative;
+  width: 1px;
+  height: 34px;
+  overflow: hidden;
+  background: var(--aeios-border-subtle);
+}
+
+.globe-hero__hint-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, var(--aeios-accent));
+  animation: globe-hint 1.8s var(--aeios-ease) infinite;
+}
+
+@keyframes globe-hint {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* ---- desktop: copy left, globe frame right ---- */
+@media (width >= 1024px) {
+  .globe-track__runway {
+    height: 170vh;
+  }
+
+  @supports (height: 1svh) {
+    .globe-track__runway {
+      height: 170svh;
+    }
+  }
+
+  .globe-hero {
     grid-template:
-      '. visual' 1fr
-      'copy visual' auto
-      'controls visual' auto
-      '. visual' 1fr
+      '. frame' 1fr
+      'copy frame' auto
+      'controls frame' auto
+      '. frame' 1fr
       / minmax(0, 0.92fr) minmax(0, 1.08fr);
-    min-height: var(--globe-band);
     background:
       radial-gradient(ellipse 48% 72% at 74% 50%, var(--aeios-tint-regional), transparent 72%),
       radial-gradient(ellipse 26% 40% at 74% 50%, var(--aeios-tint-live), transparent 74%),
@@ -371,23 +541,40 @@
     bottom: var(--aeios-space-3);
   }
 
-  .globe-hero__stage {
-    height: 100%;
-    min-height: var(--globe-band);
-    max-height: none;
+  .globe-hero__fallback {
+    top: 50%;
+    left: 73%;
+    width: min(46%, 64vh);
+  }
+
+  .globe-chapter {
+    left: var(--aeios-space-10);
+    bottom: var(--aeios-space-12);
   }
 
   .globe-hero__letterbox {
-    left: -100vw; /* clipped by the hero's rounded overflow */
     z-index: 0;
   }
 }
 
-/* ---- reduced motion: no transitions, nothing hidden ---- */
+/* The scroll hint only where the descent runs, once the intro has handed over. */
+.globe-track[data-globe-pinned='true'] .globe-hero[data-globe-copy='shown'] .globe-hero__hint {
+  display: flex;
+}
+
+/* Phones: the hint would sit on the copy; the captions start lower down the stage instead. */
+@media (width < 1024px) {
+  .globe-track[data-globe-pinned='true'] .globe-hero[data-globe-copy='shown'] .globe-hero__hint {
+    display: none;
+  }
+}
+
+/* ---- reduced motion: no transitions, nothing hidden, no scroll-linked state ---- */
 .globe-hero[data-reduced='true'] {
   --globe-reveal-dur: 0.01ms;
   --globe-reveal-step: 0ms;
   --globe-bar-dur: 0.01ms;
+  --gp: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -395,6 +582,10 @@
     --globe-reveal-dur: 0.01ms;
     --globe-reveal-step: 0ms;
     --globe-bar-dur: 0.01ms;
+  }
+
+  .globe-hero__hint-line::after {
+    animation: none;
   }
 }
 

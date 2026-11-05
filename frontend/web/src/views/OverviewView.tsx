@@ -6,6 +6,10 @@ import { scrollBehavior } from '../motion/useMotionPolicy';
 import { focusViewHeading } from '../shell/focusHeading';
 import { ViewRoot } from './shared';
 
+// Descent captions. Both configured sites are in Gurugram district, Haryana, on the Indo-Gangetic Plain.
+const REGION = { name: 'Northern India', detail: 'Haryana · Indo-Gangetic Plain' };
+const CLOSING = { name: 'Regional model + AEIOS station', detail: 'Keep scrolling to open the command center' };
+
 const coord = (value: number, pos: string, neg: string) => `${Math.abs(value).toFixed(4)}° ${value >= 0 ? pos : neg}`;
 
 /*
@@ -27,6 +31,8 @@ export default function OverviewView({ primary, secondary, overview }: { primary
         secondary={secondary}
         kicker="AEIOS SENTINEL"
         title={<>Environmental intelligence for <span>{primary.name}</span></>}
+        region={REGION}
+        closing={CLOSING}
       >
         <ul className="ov-hero-chips">
           <li className="ov-hero-chip"><MapPin size={13} aria-hidden="true" /> <span className="ax-mono">{coord(primary.lat, 'N', 'S')}, {coord(primary.lon, 'E', 'W')}</span></li>

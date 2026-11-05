@@ -2,11 +2,17 @@ import * as THREE from 'three';
 import {
   DEG,
   INTRO,
+  DESCENT,
+  descentEased,
+  descentPose,
   fitDistance,
+  lerp,
   idlePose,
   introPose,
   latLonToVec3,
   pulseAt,
+  reticleScale,
+  type FrameBox,
   type GlobePose,
   type LatLon,
   type PoseFrame,
@@ -22,11 +28,15 @@ import {
  *
  * Camera: scripted, never user-driven (no OrbitControls, the canvas ignores pointer input so vertical touch scrolling is
  * never trapped). Poses come from globeMath.ts as a pure function of accumulated time, so the intro is frame-rate
- * independent (dt in seconds, clamped to 0.1 s) and Skip/Replay are exact.
+ * independent (dt in seconds, clamped to 0.1 s) and Skip/Replay are exact. The scroll descent (setDescent, 0..1) is
+ * composed on top of the intro/idle pose (globeMath.descentPose), so scrolling and time never fight over the camera.
+ *
+ * Framing: the canvas covers the whole hero. The resting globe is sized to fit the box GlobeHero measures (setRestBox) and
+ * centred on it with camera.setViewOffset; the descent moves that centre to the middle of the canvas.
  *
  * Loop: start()/stop() are driven by useActiveLoop. When stopped no requestAnimationFrame is scheduled at all; single frames
- * are drawn on creation, resize, Skip/Replay, site change and when the tab becomes visible again. The intro runs at the
- * display rate; the idle drift is capped at about 30 FPS.
+ * are drawn on creation, resize, Skip/Replay, site change, descent change and when the tab becomes visible again. The intro
+ * runs at the display rate; the idle drift is capped at about 30 FPS, except that a descent change draws on the next frame.
  *
  * Test contract on the host: data-globe-active="true"|"false" (loop running) and data-globe-frames (frames rendered,
  * written every 10 loop frames, after every single frame and when the loop stops). No React state is touched per frame.
@@ -41,6 +51,8 @@ export type GlobeEngineOptions = {
   land: Float32Array;
   /** Start at the final frame (intro already seen this session, or reduced motion). */
   introDone: boolean;
+  /** Where the resting globe sits on the canvas (fractions); the canvas covers the whole hero. Default: the whole canvas. */
+  restBox?: FrameBox;
   onReveal(): void;
   onDone(): void;
 };
@@ -55,6 +67,10 @@ export type GlobeEngine = {
   /** The static final frame, focused on the site (reduced motion). */
   showFinalFrame(): void;
   setSite(site: LatLon): void;
+  /** The scroll-driven descent, 0..1 (0 = resting pose). Drawn at once when the loop is stopped. */
+  setDescent(d: number): void;
+  /** The resting globe's box on the canvas (fractions), measured from the layout. */
+  setRestBox(box: FrameBox): void;
   /** True while the intro is part-way through (it has advanced but not finished). */
   readonly introStarted: boolean;
   readonly running: boolean;
@@ -427,6 +443,9 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
   let frames = 0;
   let disposed = false;
   let frame: PoseFrame = { site, near: 4.3, far: 11.7 };
+  let restBox: FrameBox = options.restBox ?? { x: 0, y: 0, w: 1, h: 1 };
+  let descent = 0;
+  let urgent = false; // a descent change: draw on the next loop frame even under the idle frame cap
   let viewWidth = 1;
   let viewHeight = 1;
   let labelX = Number.NaN;
@@ -445,13 +464,20 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
     camera.rotateZ(pose.roll);
     camera.updateMatrixWorld();
 
+    // Framing: the globe centre moves from the resting box's centre to the canvas centre as the descent progresses.
+    const e = descentEased(descent);
+    const cx = lerp(restBox.x + restBox.w / 2, 0.5, e);
+    const cy = lerp(restBox.y + restBox.h / 2, 0.5, e);
+    camera.setViewOffset(viewWidth, viewHeight, (0.5 - cx) * viewWidth, (0.5 - cy) * viewHeight, viewWidth, viewHeight);
+
     oceanUniforms.uOpacity.value = pose.fade;
-    lineUniforms.uOpacity.value = 0.16 * pose.fade;
+    lineUniforms.uOpacity.value = (0.16 + DESCENT.gridBoost * e) * pose.fade;
     landUniforms.uOpacity.value = pose.fade;
     landUniforms.uFocus.value = pose.focus;
     atmosphereUniforms.uOpacity.value = pose.fade;
     starUniforms.uOpacity.value = pose.fade;
 
+    marker.scale.setScalar(reticleScale(pose.distance, frame.near));
     const lock = pose.lock;
     const ringScale = 1 + 2.2 * (1 - lock);
     ring.scale.setScalar(ringScale);
@@ -466,7 +492,7 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
     (pulse.material as THREE.MeshBasicMaterial).opacity = p.opacity;
   };
 
-  const currentPose = () => (mode === 'intro' ? introPose(introT, frame) : idlePose(idleT, frame));
+  const currentPose = () => descentPose(mode === 'intro' ? introPose(introT, frame) : idlePose(idleT, frame), descent, frame);
 
   const placeLabel = () => {
     if (!label) return;
@@ -534,7 +560,8 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
   const tick = (now: number) => {
     raf = requestAnimationFrame(tick);
     const elapsed = now - lastFrame;
-    if (mode === 'idle' && elapsed < IDLE_MIN_FRAME_MS) return;
+    if (mode === 'idle' && elapsed < IDLE_MIN_FRAME_MS && !urgent) return;
+    urgent = false;
     const dt = Math.min(MAX_DT, Math.max(0, elapsed / 1000));
     lastFrame = now;
     advance(dt);
@@ -545,17 +572,25 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
   const resize = () => {
     viewWidth = Math.max(1, host.clientWidth);
     viewHeight = Math.max(1, host.clientHeight);
-    const aspect = viewWidth / viewHeight;
-    camera.aspect = aspect;
+    camera.aspect = viewWidth / viewHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(viewWidth, viewHeight, false);
     landUniforms.uScale.value = (viewHeight * pixelRatio) / (2 * Math.tan((FOV * DEG) / 2));
-    // Final size: INTRO.fillNear of the shorter side, smaller on narrow stages so the visible halo keeps a 14 px margin.
-    const shorter = Math.min(viewWidth, viewHeight);
-    const fillNear = Math.max(0.6, Math.min(INTRO.fillNear, (shorter - 28) / (shorter * 1.12)));
-    frame = { site, near: fitDistance(aspect, FOV, fillNear), far: fitDistance(aspect, FOV, INTRO.fillFar) };
-    labelX = Number.NaN;
+    fit();
     drawStatic(); // setSize clears the canvas
+  };
+
+  /** Resting sizes from the resting box: INTRO.fillNear of its shorter side (the visible halo keeps a 14 px margin). */
+  const fit = () => {
+    const shorter = Math.max(1, Math.min(restBox.w * viewWidth, restBox.h * viewHeight));
+    const fillNear = Math.max(0.6, Math.min(INTRO.fillNear, (shorter - 28) / (shorter * 1.12)));
+    // The vertical FOV spans the canvas height, so a fill of the box is a fill of (box px / canvas height) at aspect 1.
+    frame = {
+      site,
+      near: fitDistance(1, FOV, (fillNear * shorter) / viewHeight),
+      far: fitDistance(1, FOV, (INTRO.fillFar * shorter) / viewHeight),
+    };
+    labelX = Number.NaN;
   };
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(host);
@@ -619,6 +654,20 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
       frame = { ...frame, site };
       placeMarker();
       labelX = Number.NaN;
+      if (!raf) drawStatic();
+    },
+    setDescent(d) {
+      const next = Math.min(1, Math.max(0, d));
+      if (Math.abs(next - descent) < 1e-4) return;
+      descent = next;
+      urgent = true;
+      labelX = Number.NaN;
+      if (!raf) drawStatic();
+    },
+    setRestBox(box) {
+      if (box.x === restBox.x && box.y === restBox.y && box.w === restBox.w && box.h === restBox.h) return;
+      restBox = { ...box };
+      fit();
       if (!raf) drawStatic();
     },
     dispose() {

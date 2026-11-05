@@ -156,6 +156,43 @@ export function idlePose(t: number, frame: PoseFrame): GlobePose {
   };
 }
 
+/**
+ * The scroll-driven descent (Overview landing): 0 = the resting pose, 1 = the camera low over the site, which sits exactly at the
+ * centre of the frame. Distance is interpolated exponentially (constant perceived zoom speed), everything else linearly on an
+ * eased parameter. `close` is the final camera distance from the globe centre (globe radius 1).
+ */
+// close: low enough to read the region, high enough that the land stays a fine dot matrix (closer, it turns into polka dots).
+export const DESCENT = { close: 2.1, gridBoost: 0.24 } as const;
+
+/** World scale of the site reticle at a camera distance: shrinks as the camera descends so its on-screen size grows gently. */
+export function reticleScale(distance: number, near: number): number {
+  return Math.min(1, Math.max(0.4, ((distance - 1) / Math.max(0.01, near - 1)) ** 0.7));
+}
+
+const descentEase = cubicBezier(0.45, 0, 0.2, 1);
+
+export function descentPose(base: GlobePose, d: number, frame: PoseFrame): GlobePose {
+  const e = descentEase(d);
+  if (e <= 0) return base;
+  return {
+    spin: lerp(base.spin, finalSpin(frame.site), e),
+    distance: base.distance * (DESCENT.close / base.distance) ** e,
+    elevation: lerp(base.elevation, frame.site.lat * DEG, e),
+    roll: lerp(base.roll, 0, e),
+    fade: lerp(base.fade, 1, e),
+    lock: lerp(base.lock, 1, e),
+    focus: lerp(base.focus, 1, e),
+  };
+}
+
+/** Eased descent parameter (shared by the engine for the framing and the graticule). */
+export function descentEased(d: number): number {
+  return descentEase(d);
+}
+
+/** A rectangle in fractions of the canvas (x, y = top-left). */
+export type FrameBox = { x: number; y: number; w: number; h: number };
+
 /** Locator ring: 0..1 phase -> scale and opacity (expands and fades; hidden when not running). */
 export function pulseAt(t: number): { scale: number; opacity: number } {
   const p = (((t % PULSE_PERIOD) + PULSE_PERIOD) % PULSE_PERIOD) / PULSE_PERIOD;

@@ -16,6 +16,7 @@ export default defineConfig({
     'step3-focus-nav.spec.ts',
     'views.spec.ts',
     'globe.spec.ts',
+    'scroll-takeover.spec.ts',
     'scroll-motion.spec.ts',
     'motion-lab.spec.ts',
     'a11y-audit.spec.ts',

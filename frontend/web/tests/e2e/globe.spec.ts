@@ -9,6 +9,7 @@ import { collectProblems, expect, hasHorizontalOverflow, intAttr, isCompact, ope
 
 const hero = (page: Page) => page.getByTestId('globe-hero');
 const host = (page: Page) => page.getByTestId('globe-canvas-host');
+const track = (page: Page) => page.getByTestId('globe-track');
 const frames = (page: Page) => intAttr(host(page), 'data-globe-frames');
 
 /** The loop is drawing: the frame counter moves on by more than one update (10 frames each). */
@@ -112,13 +113,14 @@ test('the loop stops when the globe is scrolled off-screen and resumes when it i
   // Scrolled away mid-intro: the intro completes (final frame) and the loop stops.
   await expect(hero(page)).toHaveAttribute('data-globe-intro', 'playing');
   await expect(host(page)).toHaveAttribute('data-globe-active', 'true', { timeout: 5_000 });
-  await scrollOffScreen(page, host(page));
+  // The hero is pinned over its scroll track, so it leaves the screen only once the whole track has.
+  await scrollOffScreen(page, track(page));
   await expect(hero(page)).toHaveAttribute('data-globe-intro', 'done');
   await expectStopped(page);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await expectDrawing(page);
   // And once more after the intro.
-  await scrollOffScreen(page, host(page));
+  await scrollOffScreen(page, track(page));
   await expectStopped(page);
 });
 
