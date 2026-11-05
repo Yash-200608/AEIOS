@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent,
 import { Menu, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { scrollBehavior } from './motion/useMotionPolicy';
 import { ScrollProgress } from './motion/scroll';
+import { useSmoothWheel } from './motion/smoothWheel';
 import type { SceneWeather } from './components/WeatherScene';
 import { SmokeBanner } from './components/SmokeAlerts';
 import { api, type SiteId, type WeatherPayload } from './lib/api';
@@ -29,6 +30,7 @@ const SITES: Record<SiteId, { title: string; subtitle: string; lat: number; lon:
 const COMPACT_QUERY = '(max-width: 980px)';
 
 export default function App({ userEmail = '', onSignOut }: { userEmail?: string; onSignOut?: () => void }) {
+  useSmoothWheel();
   const [site, setSite] = useState<SiteId>('sgt');
   const [days, setDays] = useState(15);
   const [weather, setWeather] = useState<WeatherPayload | null>(null);
