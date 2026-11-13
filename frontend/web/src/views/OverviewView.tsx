@@ -19,7 +19,7 @@ const coord = (value: number, pos: string, neg: string) => `${Math.abs(value).to
  */
 export default function OverviewView({ primary, secondary, overview }: { primary: GlobeSite; secondary?: GlobeSite; overview: ComponentProps<typeof Overview> }) {
   const openCommandCenter = () => {
-    const target = document.getElementById('overview');
+    const target = document.getElementById('briefing');
     if (!target) return;
     target.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     focusViewHeading(target);

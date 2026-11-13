@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpenText,
   Box,
   CalendarDays,
   CloudFog,
@@ -20,6 +21,7 @@ import {
  */
 export type ViewId =
   | 'overview'
+  | 'briefing'
   | 'air-quality'
   | 'dispersion'
   | 'twin'
@@ -50,10 +52,17 @@ export type ViewDef = {
 export const VIEWS: readonly ViewDef[] = [
   {
     id: 'overview',
-    label: 'Overview',
+    label: 'Command deck',
     group: 'MONITOR',
     icon: Activity,
-    subtitle: 'The current dispersion situation at the selected site, with the evidence behind it.',
+    subtitle: 'The current dispersion situation at the selected site, on one screen.',
+  },
+  {
+    id: 'briefing',
+    label: 'Briefing',
+    group: 'MONITOR',
+    icon: BookOpenText,
+    subtitle: 'The evidence, limits and criteria behind the command deck headline.',
   },
   {
     id: 'air-quality',

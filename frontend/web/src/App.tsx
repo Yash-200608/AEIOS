@@ -11,6 +11,8 @@ import { useViewRoute } from './shell/useViewRoute';
 import { focusViewHeading } from './shell/focusHeading';
 import { DEFAULT_VIEW, VIEW_ALIASES, VIEW_BY_ID, VIEW_GROUPS, VIEW_IDS, type ViewId } from './shell/viewRegistry';
 import OverviewView from './views/OverviewView';
+import BriefingView from './views/BriefingView';
+import type { OverviewProps } from './deck/useOverviewModel';
 import AirQualityView from './views/AirQualityView';
 import ForecastView from './views/ForecastView';
 import AtmosphereView from './views/AtmosphereView';
@@ -189,6 +191,12 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
     document.getElementById('main-content')?.focus();
   };
 
+  const overviewProps: OverviewProps = {
+    site, title: siteConfig.title, subtitle: siteConfig.subtitle, lat: siteConfig.lat, lon: siteConfig.lon,
+    loadState, forecastMeta, lastUpdated, current, hourly, selectedHour, selectedTime,
+    aq, aqWarning, onRetry: () => void load(), onNavigate: navigate,
+  };
+
   const renderView = (id: ViewId) => {
     switch (id) {
       case 'overview':
@@ -196,13 +204,11 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
           <OverviewView
             primary={{ name: siteConfig.title, lat: siteConfig.lat, lon: siteConfig.lon }}
             secondary={{ name: otherSite.title, lat: otherSite.lat, lon: otherSite.lon }}
-            overview={{
-              site, title: siteConfig.title, subtitle: siteConfig.subtitle, lat: siteConfig.lat, lon: siteConfig.lon,
-              loadState, forecastMeta, lastUpdated, current, hourly, selectedHour, selectedTime,
-              aq, aqWarning, onRetry: () => void load(), onNavigate: navigate,
-            }}
+            overview={overviewProps}
           />
         );
+      case 'briefing':
+        return <BriefingView overview={overviewProps} />;
       case 'air-quality':
         return <AirQualityView aq={aq} aqWarning={aqWarning} />;
       case 'dispersion':
