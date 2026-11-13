@@ -59,3 +59,22 @@ Mounted from `main.tsx` behind `import.meta.env.DEV && ?motionlab`, lazy-importe
 ## 7. Three.js changes in scope
 
 Loop hygiene: pause off-screen, hidden tab, reduced motion; time-based (frame-rate independent) particle speed; no full WebGL rebuild on data change. Integrity: no rain when none is forecast; no clouds at 0% cover; no decorative sway or wobble; calm wind stands still; missing values shown as missing, not 0. Architecture stays plain Three.js.
+
+## 12. Command deck exception (2026-11-13)
+
+The owner asked for a more motion-invested, desktop-only dashboard and chose to loosen the rules in section 1 for the command
+deck (`src/deck/`) and the shell (`src/shell/`). Design: `docs/superpowers/specs/2026-11-13-command-deck-design.md`.
+
+| Rule | Status for the deck and shell |
+|---|---|
+| "Motion explains state; it never decorates" | Relaxed: decoration is allowed (ambient background, cursor parallax, hover highlight, boot sequence, cinematic view transition) |
+| "No number tweening, no count-ups, no pulse loops" | Relaxed: numbers count up on first appearance and on a real value change (`useCountUp`); a lamp pulses only while its data is fresh (`lampState`) |
+| "No animation keyed on poll identity" | **Kept.** A new poll with the same value plays nothing |
+| Reduced motion renders the final state at once | **Kept.** OS setting and `.aeios-force-reduced-motion`: no boot, no loops, no tweens |
+| "Zero cost when idle" | Relaxed: ambient loops run while the deck is visible; they stop in a hidden tab, off-screen and under reduced motion |
+| Missing or stale data is never drawn as live | **Kept.** A missing value is "no reading", never 0; stale and failed readings show no numbers and nothing pulses |
+| Source labels on every value | **Kept** (measured / regional / model / simulation) |
+| "Not neon, not glassmorphism" (visual foundation) | Relaxed for cards over the globe (soft glow, translucent panels). Palette and tokens are unchanged |
+
+The shell is desktop only: width 1280 px and up renders at natural size, 1024 to 1279 px is scaled to fit, and under 1024 px the
+dashboard is replaced by a notice (`src/shell/DesktopGate.tsx`). The phone and tablet test projects were removed.
