@@ -6,6 +6,7 @@ import './design/tokens.css';
 import './design/shell.css';
 import App from './App';
 import AuthGate from './components/AuthGate';
+import DesktopGate from './shell/DesktopGate';
 
 // Local development only (`npm run dev`, then open /?preview): render the dashboard without signing in to check layout.
 // Vite replaces import.meta.env.DEV with false in production builds, so this branch is removed from the deployed site.
@@ -27,7 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       : designLab && DesignLab
       ? <Suspense fallback={null}><DesignLab /></Suspense>
       : preview
-      ? <App userEmail="preview" />
-      : <AuthGate>{({ email, signOut }) => <App userEmail={email} onSignOut={signOut} />}</AuthGate>}
+      ? <DesktopGate><App userEmail="preview" /></DesktopGate>
+      : <AuthGate>{({ email, signOut }) => <DesktopGate><App userEmail={email} onSignOut={signOut} /></DesktopGate>}</AuthGate>}
   </React.StrictMode>,
 );

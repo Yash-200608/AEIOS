@@ -1,0 +1,328 @@
+/*
+ * Desktop-only shell: desktop gate, navigation rail, top bar. Tokens only (design/tokens.css).
+ * The dashboard is not rendered under 1024 px (DesktopGate), so nothing here has a narrow-screen variant.
+ */
+
+/* ---- desktop gate ---- */
+.desk-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--aeios-space-6);
+  background: var(--aeios-canvas);
+  color: var(--aeios-text-primary);
+  font-family: var(--aeios-font-ui);
+}
+
+.desk-gate__card {
+  max-width: 420px;
+  padding: var(--aeios-space-8);
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: var(--aeios-radius-lg);
+  background: var(--aeios-surface-1);
+  text-align: center;
+  color: var(--aeios-text-secondary);
+}
+
+.desk-gate__card svg {
+  color: var(--aeios-accent);
+}
+
+.desk-gate__brand {
+  margin: var(--aeios-space-3) 0 var(--aeios-space-4);
+  font: 500 var(--aeios-text-xs) var(--aeios-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--aeios-text-tertiary);
+}
+
+.desk-gate__card h1 {
+  margin: 0 0 var(--aeios-space-3);
+  font: 600 var(--aeios-text-lg) / 1.25 var(--aeios-font-ui);
+  letter-spacing: 0;
+  color: var(--aeios-text-primary);
+}
+
+.desk-gate__card p:last-child {
+  margin: 0;
+  font-size: var(--aeios-text-base);
+  line-height: 1.5;
+}
+
+/* ---- shell frame ---- */
+.app-shell.dk-shell {
+  --dk-rail: 72px;
+  --dk-rail-open: 248px;
+  --dk-top: 56px;
+
+  display: block;
+  min-height: calc(100vh / var(--desk-scale, 1));
+  padding-left: var(--dk-rail);
+  zoom: var(--desk-scale, 1);
+}
+
+.dk-shell .main-content {
+  max-width: none;
+  margin: 0;
+  padding: 0 var(--aeios-space-8) var(--aeios-space-8);
+}
+
+/* ---- rail ---- */
+.dk-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: var(--dk-rail);
+  display: flex;
+  flex-direction: column;
+  padding: var(--aeios-space-4) var(--aeios-space-3);
+  overflow: hidden auto;
+  background: color-mix(in srgb, var(--aeios-canvas) 88%, transparent);
+  border-right: 1px solid var(--aeios-border-subtle);
+  backdrop-filter: blur(14px);
+  transition:
+    width var(--aeios-dur-nav) var(--aeios-ease),
+    box-shadow var(--aeios-dur-nav) var(--aeios-ease);
+  scrollbar-width: none;
+}
+
+.dk-rail:hover,
+.dk-rail:focus-within {
+  width: var(--dk-rail-open);
+  box-shadow: var(--aeios-shadow-overlay);
+}
+
+.dk-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--aeios-space-3);
+  height: 40px;
+  margin-bottom: var(--aeios-space-5);
+  padding-left: 6px;
+  white-space: nowrap;
+}
+
+.dk-rail__brand .brand-mark {
+  flex: none;
+}
+
+.dk-rail__brand-text,
+.dk-rail__label,
+.dk-rail__group span {
+  opacity: 0;
+  transition: opacity var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.dk-rail:hover :is(.dk-rail__brand-text, .dk-rail__label, .dk-rail__group span),
+.dk-rail:focus-within :is(.dk-rail__brand-text, .dk-rail__label, .dk-rail__group span) {
+  opacity: 1;
+  transition-delay: 60ms;
+}
+
+.dk-rail__group {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  margin-top: var(--aeios-space-3);
+  padding-left: 14px;
+  font: 500 var(--aeios-text-xs) var(--aeios-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--aeios-text-tertiary);
+  white-space: nowrap;
+  border-top: 1px solid var(--aeios-border-subtle);
+}
+
+.dk-rail__brand + .dk-rail__group {
+  border-top: 0;
+  margin-top: 0;
+}
+
+.dk-rail__nav {
+  display: grid;
+  gap: 2px;
+}
+
+.dk-rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--aeios-space-3);
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--aeios-radius-md);
+  background: transparent;
+  color: var(--aeios-text-secondary);
+  font: 500 var(--aeios-text-base) var(--aeios-font-ui);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.dk-rail__item:hover {
+  color: var(--aeios-text-primary);
+}
+
+.dk-rail__item:hover .dk-rail__icon {
+  transform: scale(1.12);
+}
+
+.dk-rail__item.is-active {
+  color: var(--aeios-accent);
+}
+
+.dk-rail__item:focus-visible {
+  outline: 3px solid var(--aeios-focus-ring);
+  outline-offset: -3px;
+}
+
+.dk-rail__active {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--aeios-tint-live);
+  box-shadow: inset 2px 0 0 var(--aeios-accent);
+}
+
+.dk-rail__icon {
+  position: relative;
+  flex: none;
+  width: 48px;
+  display: grid;
+  place-items: center;
+  transition: transform var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.dk-rail__label {
+  position: relative;
+}
+
+.dk-rail__foot {
+  margin-top: auto;
+  padding: var(--aeios-space-4) 0 0 14px;
+  font: var(--aeios-text-xs) var(--aeios-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--aeios-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ---- top bar ---- */
+.dk-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--dk-top);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aeios-space-4);
+  margin: 0 calc(-1 * var(--aeios-space-8));
+  padding: 0 var(--aeios-space-8);
+  background: color-mix(in srgb, var(--aeios-canvas) 78%, transparent);
+  border-bottom: 1px solid var(--aeios-border-subtle);
+  backdrop-filter: blur(12px);
+}
+
+.dk-top__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--aeios-space-3);
+}
+
+.dk-sites {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--aeios-border-subtle);
+  border-radius: 999px;
+  background: var(--aeios-surface-1);
+}
+
+.dk-sites__opt {
+  position: relative;
+  height: 30px;
+  padding: 0 var(--aeios-space-4);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--aeios-text-secondary);
+  font: 500 var(--aeios-text-sm) var(--aeios-font-ui);
+  cursor: pointer;
+  transition: color var(--aeios-dur-micro) var(--aeios-ease);
+}
+
+.dk-sites__opt:hover {
+  color: var(--aeios-text-primary);
+}
+
+.dk-sites__opt.is-on {
+  color: var(--aeios-on-accent);
+}
+
+.dk-sites__opt:focus-visible {
+  outline: 3px solid var(--aeios-focus-ring);
+  outline-offset: 2px;
+}
+
+.dk-sites__thumb {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--aeios-accent);
+}
+
+.dk-sites__name {
+  position: relative;
+}
+
+.dk-clock {
+  padding: 0 var(--aeios-space-2);
+  font: var(--aeios-text-xs) var(--aeios-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--aeios-text-tertiary);
+}
+
+.dk-clock b {
+  font-size: var(--aeios-text-base);
+  font-weight: 500;
+  color: var(--aeios-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-top .icon-button,
+.dk-top .avatar-chip {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-color: var(--aeios-border-subtle);
+  background: var(--aeios-surface-1);
+  color: var(--aeios-text-secondary);
+  cursor: pointer;
+}
+
+.dk-top .icon-button:hover,
+.dk-top .avatar-chip:hover {
+  color: var(--aeios-accent);
+  border-color: var(--aeios-border-strong);
+}
+
+.dk-top .breadcrumb,
+.dk-top .breadcrumb b {
+  font-family: var(--aeios-font-mono);
+  color: var(--aeios-text-tertiary);
+}
+
+.dk-top .breadcrumb b {
+  color: var(--aeios-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-rail,
+  .dk-rail__brand-text,
+  .dk-rail__label,
+  .dk-rail__group span,
+  .dk-rail__icon {
+    transition: none;
+  }
+}
