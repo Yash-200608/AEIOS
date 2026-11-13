@@ -19,8 +19,9 @@ export default function AuthGate({ children }: { children: (user: { email: strin
   useEffect(() => {
     if (!session) { setAccess('checking'); return; }
     let cancelled = false;
-    supabase.from('allowed_users').select('email').maybeSingle().then(({ data, error }) => {
-      if (!cancelled) setAccess(!error && data ? 'allowed' : 'denied');
+    // is_allowed() is the single source of truth (same function the row level security policies use).
+    supabase.rpc('is_allowed').then(({ data, error }) => {
+      if (!cancelled) setAccess(!error && data === true ? 'allowed' : 'denied');
     });
     return () => { cancelled = true; };
   }, [session]);
@@ -34,7 +35,7 @@ export default function AuthGate({ children }: { children: (user: { email: strin
     return (
       <div className="auth-screen"><div className="auth-card">
         <h1>Access pending</h1>
-        <p className="auth-note"><b>{session.user.email}</b> is signed in but is not on the AEIOS allowed list yet. Ask the project owner to add this email, then reload.</p>
+        <p className="auth-note"><b>{session.user.email}</b> is signed in but access could not be confirmed. Reload to retry, or sign out and sign in again.</p>
         <button className="auth-button" onClick={signOut}>Sign out</button>
       </div></div>
     );
@@ -81,7 +82,7 @@ function LoginForm() {
         <div className="brand-lockup"><div className="brand-mark"><span /><span /><span /></div>
           <div><div className="brand-name">AEIOS<span> / SENTINEL</span></div><div className="brand-caption">ENVIRONMENTAL INTELLIGENCE</div></div></div>
         <h1>{mode === 'signin' ? 'Sign in' : 'Create account'}</h1>
-        <p className="auth-note">Private dashboard. Only approved email addresses can view data.</p>
+        <p className="auth-note">Create an account or sign in to view the data.</p>
         <button className="auth-google" type="button" onClick={google} disabled={busy}>Continue with Google</button>
         <div className="auth-or"><span>or use email</span></div>
         <label htmlFor="auth-email">Email</label>

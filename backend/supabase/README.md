@@ -10,5 +10,6 @@ Project `aeios-cloud` (region ap-south-1).
   headers). Public satellite data only; reads nothing from the database.
 - `seed.example.sql` — how to add the allow-list, nodes and device token with your own values.
 
-Reading is allowed only to signed-in users whose email is in `allowed_users` (`public.is_allowed()`).
+Reading is allowed to any signed-in user that has an email (`public.is_allowed()`, migration `20261113_005`). The `allowed_users`
+table is no longer consulted; the migration header shows how to restore admin-approved access.
 Deploy functions with `supabase functions deploy ingest --no-verify-jwt` and `supabase functions deploy fires --no-verify-jwt`.
