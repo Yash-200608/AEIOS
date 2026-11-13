@@ -14,7 +14,7 @@
   gap: var(--dk-gap);
   /* top bar 56 + this grid's top margin 16 + the main area's bottom padding 32 = 104: the deck is exactly one screen tall. */
   height: calc(100vh / var(--desk-scale, 1) - 104px);
-  min-height: 640px;
+  min-height: 560px; /* a window shorter than 664 px scrolls instead of squeezing the deck further */
   margin-top: var(--dk-gap);
 }
 

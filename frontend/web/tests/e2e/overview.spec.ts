@@ -21,9 +21,9 @@ const FIXTURES = ['normal', 'stale', 'noreading', 'gatewayoffline', 'alert', 'fe
 
 for (const name of FIXTURES) {
   test(`overview: fixture ${name}`, async ({ page, context }, testInfo) => {
-    await page.goto(`/?preview&fixture=${name}`);
+    await page.goto(`/?preview&fixture=${name}#/briefing`);
     await expect(stage(page)).toHaveAttribute('data-view', 'overview');
-    const overview = page.locator('#overview');
+    const overview = page.locator('#briefing');
     // The fixture banner proves the fixture (not live data) is what is rendered.
     await expect(overview.locator('.cc-dev')).toContainText(`"${name}"`);
 
@@ -60,7 +60,7 @@ for (const name of FIXTURES) {
     await expect(page.getByTestId('globe-hero')).toHaveAttribute('data-globe-intro', 'done', { timeout: 8_000 });
     await settleFiniteAnimations(page).catch(() => undefined);
     const axe = await new AxeBuilder({ page })
-      .include('#overview')
+      .include('#briefing')
       .include('[data-testid="globe-hero"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();

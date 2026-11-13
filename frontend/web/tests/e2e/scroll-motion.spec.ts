@@ -39,7 +39,7 @@ const finalStyle = (loc: Locator) =>
   loc.evaluate((el) => ({ opacity: getComputedStyle(el).opacity, transform: getComputedStyle(el).transform }));
 
 async function openForecast(page: Page) {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await navTo(page, 'forecast');
   await stageIdle(page);
 }
@@ -102,7 +102,7 @@ test('panels below the fold wait ("pending") and rise in once when scrolled into
 });
 
 test('the hero band plays its entrance and ends with every word in place; scrolling works during it', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await navTo(page, 'forecast');
   const words = page.locator('[data-view-id="forecast"] .view-hero__word-inner');
   await expect(words.first()).toBeAttached();

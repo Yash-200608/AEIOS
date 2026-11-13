@@ -4,7 +4,6 @@ import { defineConfig, devices } from '@playwright/test';
 // Every spec imports `test` from ./tests/e2e/support, which seeds the cached Open-Meteo run and blocks open-meteo.com:
 // the free daily quota is never consumed by tests.
 const BASE_URL = 'http://127.0.0.1:5174';
-const touch = { isMobile: true, hasTouch: true } as const;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -28,10 +27,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], channel: 'chrome', viewport: { width: 1440, height: 900 } } },
+    { name: 'desktop-hd', use: { ...devices['Desktop Chrome'], channel: 'chrome', viewport: { width: 1920, height: 1080 } } },
     { name: 'laptop', use: { ...devices['Desktop Chrome'], channel: 'chrome', viewport: { width: 1280, height: 800 } } },
-    { name: 'tablet-landscape', use: { channel: 'chrome', viewport: { width: 1024, height: 768 }, ...touch } },
-    { name: 'tablet', use: { channel: 'chrome', viewport: { width: 768, height: 1024 }, ...touch } },
-    { name: 'phone-390', use: { channel: 'chrome', viewport: { width: 390, height: 844 }, ...touch } },
-    { name: 'phone-360', use: { channel: 'chrome', viewport: { width: 360, height: 800 }, ...touch } },
   ],
 });

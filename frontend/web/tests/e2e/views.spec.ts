@@ -54,7 +54,7 @@ test('every sidebar item opens its own view: heading, URL, one mounted view, foc
 }) => {
   test.slow(); // eleven views
   const problems = collectProblems(page);
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   // Start from the end of the list so the first step (to Air quality) is a real change.
   for (const view of [...VIEW_KEYS.slice(1), 'overview' as const]) {
     await navTo(page, view);
@@ -71,7 +71,7 @@ test('every sidebar item opens its own view: heading, URL, one mounted view, foc
 });
 
 test('the transition reports "entering" with one accent sweep, then settles at "idle"', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await page.evaluate(() => {
     const w = window as unknown as { __states: string[] };
     w.__states = [];
@@ -91,7 +91,7 @@ test('the transition reports "entering" with one accent sweep, then settles at "
 });
 
 test('Back and Forward move between views; the URL and the current item follow', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await navTo(page, 'forecast');
   await expectViewOpen(page, 'forecast');
   await navTo(page, 'station');
@@ -127,7 +127,7 @@ test('legacy anchors are rewritten to routes; an unknown route opens the Overvie
 });
 
 test('an Overview destination opens its view; no other item is ever current on the way', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await page.evaluate(() => {
     const w = window as unknown as { __seen: string[] };
     w.__seen = [];
@@ -145,7 +145,7 @@ test('an Overview destination opens its view; no other item is ever current on t
 });
 
 test('rapid clicks: the last view wins and nothing is left mid-transition', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   // Activate three items as fast as a click does (works with the drawer closed on narrow layouts).
   await page.evaluate(
     (labels) => {
@@ -175,7 +175,7 @@ test('the current item returns to the top of its view without a new history entr
 });
 
 test('keyboard: Enter on a sidebar item opens the view and focus lands on its heading', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   test.skip(await isCompact(page), 'the sidebar is a drawer on narrow layouts (covered by the first test)');
   await page.locator('#primary-nav').getByRole('button', { name: 'Simulation lab', exact: true }).focus();
   await page.keyboard.press('Enter');
@@ -186,7 +186,7 @@ test('keyboard: Enter on a sidebar item opens the view and focus lands on its he
 test('narrow layouts: the drawer closes on navigation, focus goes to the heading, Escape returns focus to the menu button', async ({
   page,
 }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   test.skip(!(await isCompact(page)), 'the sidebar is not a drawer at this width');
   await navTo(page, 'air-quality');
   await expect(page.locator('#primary-nav')).not.toHaveClass(/is-open/);
@@ -200,7 +200,7 @@ test('narrow layouts: the drawer closes on navigation, focus goes to the heading
 });
 
 test('leaving a view releases its WebGL: no globe or scene canvas is left behind', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await expect(page.locator('[data-testid="globe-canvas-host"] canvas')).toHaveCount(1);
   await navTo(page, 'atmosphere');
   await stageIdle(page);
@@ -213,7 +213,7 @@ test('leaving a view releases its WebGL: no globe or scene canvas is left behind
 
 test('views that show the weather model state a cached run in their own hero band; the others do not', async ({ page }) => {
   // The fixture's seeded run is old and Open-Meteo is blocked, so the shell serves a stale cached run.
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   for (const view of ['forecast', 'dispersion', 'atmosphere', 'simulation', 'station', 'smoke'] as const) {
     await navTo(page, view);
     await stageIdle(page);
@@ -229,7 +229,7 @@ test('views that show the weather model state a cached run in their own hero ban
 });
 
 test('turning reduced motion on while a view is open keeps that view: no remount, no jump to the top, no focus move', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await navTo(page, 'atmosphere');
   await stageIdle(page);
   const max = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
@@ -265,7 +265,7 @@ test('turning reduced motion on while a view is open keeps that view: no remount
 test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
   test('the view change is an instant swap: never "entering", no sweep, no hidden start state', async ({ page }) => {
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     await page.evaluate(() => {
       const w = window as unknown as { __states: string[] };
       w.__states = [];

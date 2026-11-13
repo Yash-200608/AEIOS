@@ -19,8 +19,8 @@ const infoText = (page: import('@playwright/test').Page) =>
     }));
 
 async function openColumn(page: import('@playwright/test').Page) {
-  await openView(page, 'overview');
-  await expect(page.locator('#overview .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
+  await openView(page, 'briefing');
+  await expect(page.locator('#briefing .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
   const column = page.locator('.cc-column').first();
   await column.scrollIntoViewIfNeeded();
   await expect(column).toHaveAttribute('data-offscreen', 'false');

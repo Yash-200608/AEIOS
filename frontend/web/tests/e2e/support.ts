@@ -107,7 +107,8 @@ export const PREVIEW = '/?preview&fixture=normal';
 
 /** Navigation label of every view, in navigation order (must match src/shell/viewRegistry.ts). */
 export const VIEW_LABELS = {
-  overview: 'Overview',
+  overview: 'Command deck',
+  briefing: 'Briefing',
   'air-quality': 'Air quality',
   dispersion: 'Pollution dispersion',
   twin: '3D dispersion twin',
@@ -131,18 +132,14 @@ export async function openView(page: Page, view: ViewKey = 'overview'): Promise<
   await expect(stage(page)).toHaveAttribute('data-view-state', 'idle', { timeout: 5_000 });
 }
 
-/** True when the sidebar is an off-canvas drawer (narrow layouts): the menu button is shown. */
-export const isCompact = (page: Page) => page.locator('.menu-button').isVisible();
+/** The dashboard is desktop only (no drawer): kept so older specs compile; always false. */
+export const isCompact = async (_page: Page) => false;
 
 /**
- * Open a view the way a user does: click its sidebar item, opening the drawer first on narrow layouts.
+ * Open a view the way a user does: click its navigation rail item.
  * Waits until the stage shows the view (not until its transition has finished).
  */
 export async function navTo(page: Page, view: ViewKey): Promise<void> {
-  if (await isCompact(page)) {
-    await page.locator('.menu-button').click();
-    await expect(page.locator('#primary-nav')).toHaveClass(/is-open/);
-  }
   await page.locator('#primary-nav').getByRole('button', { name: VIEW_LABELS[view], exact: true }).click();
   await expect(stage(page)).toHaveAttribute('data-view', view);
 }
@@ -157,12 +154,12 @@ export const currentNav = (page: Page) =>
     .evaluateAll((els) => els.map((e) => `${e.getAttribute('aria-current')}:${e.textContent?.trim()}`));
 
 /**
- * Bring the Overview's command center into view so its Mission Reveal starts (it waits below the globe landing), and wait
- * until the reveal has finished. Also waits for the cached model run, which every Overview assertion depends on.
+ * Bring the Briefing's command center into view so its Mission Reveal starts, and wait until the reveal has finished.
+ * The page must already be on #/briefing. Also waits for the cached model run, which every Overview assertion depends on.
  */
 export async function revealCommandCenter(page: Page, feed: RegExp | string = 'Cached model run'): Promise<void> {
-  const root = page.locator('#overview .cc');
-  await expect(page.locator('#overview .cc-currency')).toContainText(feed, { timeout: 15_000 });
+  const root = page.locator('#briefing .cc');
+  await expect(page.locator('#briefing .cc-currency')).toContainText(feed, { timeout: 15_000 });
   // Late panels shift the layout, so scroll again until the reveal has started.
   await expect(async () => {
     await root.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));

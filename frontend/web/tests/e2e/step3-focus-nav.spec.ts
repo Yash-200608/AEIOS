@@ -7,8 +7,8 @@ import type { Page } from '@playwright/test';
 import { expect, openView, refreshData, revealCommandCenter, test } from './support';
 
 async function open(page: Page) {
-  await openView(page, 'overview');
-  await expect(page.locator('#overview .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
+  await openView(page, 'briefing');
+  await expect(page.locator('#briefing .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
 }
 const column = (page: Page) => page.locator('.cc-column').first();
 
@@ -99,7 +99,7 @@ test('Regional context and Destinations enter once; nothing else does; data upda
   await revealCommandCenter(page);
   const once = page.locator('[data-enter-once]');
   await expect(once).toHaveCount(2);
-  expect(await page.locator('#overview [data-enter-once] .cc-region, #overview [data-enter-once] .cc-dest').count()).toBe(2);
+  expect(await page.locator('#briefing [data-enter-once] .cc-region, #briefing [data-enter-once] .cc-dest').count()).toBe(2);
   await page.locator('.cc-region').scrollIntoViewIfNeeded();
   await page.locator('.cc-dest').scrollIntoViewIfNeeded(); // on a phone the two sections are a screen apart
   await expect.poll(() => once.evaluateAll((els) => els.every((e) => getComputedStyle(e).opacity === '1')), { timeout: 3_000 }).toBe(true);
@@ -119,14 +119,14 @@ test('Regional context and Destinations enter once; nothing else does; data upda
   await page.waitForTimeout(800);
   expect(await page.evaluate(() => (window as unknown as { __min: number }).__min)).toBe(1);
   // Only those two use an entrance: the main band, alerts and rail are not scroll-animated.
-  expect(await page.locator('#overview .cc-band [data-enter-once], #overview .cc-rail [data-enter-once]').count()).toBe(0);
+  expect(await page.locator('#briefing .cc-band [data-enter-once], #briefing .cc-rail [data-enter-once]').count()).toBe(0);
 });
 
 test('a second visit in the same session shows the lower sections without any entrance', async ({ page }) => {
   await open(page);
   await revealCommandCenter(page);
   await page.reload();
-  await expect(page.locator('#overview .cc')).toBeVisible();
+  await expect(page.locator('#briefing .cc')).toBeVisible();
   expect(await page.locator('[data-enter-once]').count()).toBe(0);
   await expect(page.locator('.cc-region')).toBeVisible();
 });

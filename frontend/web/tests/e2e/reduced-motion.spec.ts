@@ -8,9 +8,9 @@ import { expect, intAttr, navTo, openView, stage, test } from './support';
 test.use({ reducedMotion: 'reduce' });
 
 test('overview: no CSS streak animation and the globe is a static final frame', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   // The column (and its streak lanes) renders once the cached model run has loaded.
-  await expect(page.locator('#overview .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
+  await expect(page.locator('#briefing .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
   const running = await page
     .locator('.cc-col-flow')
     .evaluateAll((els) => els.map((el) => getComputedStyle(el).animationName).filter((n) => n !== 'none'));
@@ -28,7 +28,7 @@ test('overview: no CSS streak animation and the globe is a static final frame', 
 });
 
 test('3D atmosphere view: the scene loop stays stopped; the view change is an instant swap', async ({ page }) => {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await navTo(page, 'atmosphere');
   // An instant swap: the new view is settled and the only one mounted as soon as the stage reports it.
   await expect(stage(page)).toHaveAttribute('data-view-state', 'idle');

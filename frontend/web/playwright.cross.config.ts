@@ -36,8 +36,6 @@ export default defineConfig({
   },
   projects: [
     { name: 'firefox-desktop', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } } },
-    { name: 'firefox-narrow', use: { ...devices['Desktop Firefox'], viewport: { width: 390, height: 844 } } },
     { name: 'webkit-desktop', use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } } },
-    { name: 'webkit-iphone-emulated', use: { ...devices['iPhone 13'] } },
   ],
 });

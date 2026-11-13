@@ -9,9 +9,9 @@ import type { Page } from '@playwright/test';
 import { expect, navTo, openView, revealCommandCenter, stageIdle, test, VIEW_KEYS, VIEW_LABELS } from './support';
 
 async function open(page: Page, fixture = 'normal') {
-  await page.goto(`/?preview&fixture=${fixture}`);
+  await page.goto(`/?preview&fixture=${fixture}#/briefing`);
   await revealCommandCenter(page, fixture === 'feederror' ? /unavailable/ : 'Cached model run');
-  await expect(page.locator('#overview .cc-currency .ax-state').filter({ hasText: /^Node/ })).toHaveCount(1);
+  await expect(page.locator('#briefing .cc-currency .ax-state').filter({ hasText: /^Node/ })).toHaveCount(1);
   await expect(page.getByTestId('globe-hero')).toHaveAttribute('data-globe-intro', 'done', { timeout: 8_000 });
 }
 
@@ -19,7 +19,7 @@ for (const fixture of ['normal', 'stale', 'gatewayoffline']) {
   test(`axe, WCAG 2.x A/AA and best practice: Overview and navigation (${fixture})`, async ({ page }, info) => {
     await open(page, fixture);
     const r = await new AxeBuilder({ page })
-      .include('#overview')
+      .include('#briefing')
       .include('#primary-nav')
       .include('[data-testid="globe-hero"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
@@ -36,9 +36,9 @@ test('accessibility tree: one current nav item, named lanes with units, labels t
   for (const [name, sel] of [
     ['nav', '#primary-nav'],
     ['column', '.cc-column'],
-    ['currency', '#overview .cc-currency'],
-    ['rail', '#overview .cc-rail'],
-    ['reveal-controls', '#overview .cc-reveal-controls'],
+    ['currency', '#briefing .cc-currency'],
+    ['rail', '#briefing .cc-rail'],
+    ['reveal-controls', '#briefing .cc-reveal-controls'],
     ['globe-hero', '[data-testid="globe-hero"]'],
   ] as const) {
     const snap = await page.locator(sel).first().ariaSnapshot();
@@ -96,7 +96,7 @@ test('keyboard: Tab reaches the globe controls, the reveal controls, the column 
         (bg ? getComputedStyle(bg).stroke !== 'rgba(0, 0, 0, 0)' && getComputedStyle(bg).stroke !== 'transparent' : false);
       return {
         id: el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 40) ?? el.tagName,
-        inOverview: Boolean(el.closest('#overview')),
+        inOverview: Boolean(el.closest('#briefing')),
         inGlobe: Boolean(el.closest('[data-testid="globe-hero"]')),
         indicator,
       };
@@ -153,7 +153,7 @@ test('status-label morph: assistive technology never sees two labels at once', a
 test('no live regions were added by the motion work', async ({ page }, info) => {
   await open(page);
   const regions = await page
-    .locator('#overview [aria-live], #overview [role="status"], #overview [role="alert"]')
+    .locator('#briefing [aria-live], #briefing [role="status"], #briefing [role="alert"]')
     .evaluateAll((els) =>
       els.map(
         (e) => `${e.tagName.toLowerCase()}[${e.getAttribute('aria-live') ?? e.getAttribute('role')}] ${e.textContent?.trim().slice(0, 50)}`,
@@ -161,7 +161,7 @@ test('no live regions were added by the motion work', async ({ page }, info) => 
     );
   info.annotations.push({ type: 'live regions in Overview', description: regions.join(' | ') || 'none' });
   expect(
-    await page.locator('#overview .cc-reveal-controls [aria-live], #overview .cc-morph[aria-live], .cc-column [aria-live]').count(),
+    await page.locator('#briefing .cc-reveal-controls [aria-live], #briefing .cc-morph[aria-live], .cc-column [aria-live]').count(),
   ).toBe(0);
   // Nor by the globe landing, the view stage or the reading-progress bar.
   expect(
@@ -178,7 +178,7 @@ test('every view: one h1 (its name, programmatically focusable), and no serious 
   page,
 }, info) => {
   test.slow(); // eleven views, an axe run each
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   const legacy: string[] = [];
   for (const view of VIEW_KEYS.filter((v) => v !== 'overview')) {
     await navTo(page, view);

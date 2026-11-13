@@ -39,7 +39,7 @@ async function trackY(page: Page, p: number): Promise<number> {
 }
 
 async function readyPinned(page: Page) {
-  await openView(page, 'overview');
+  await openView(page, 'briefing');
   await expect(hero(page)).toHaveAttribute('data-globe-status', 'ready', { timeout: 5_000 });
   await expect(track(page)).toHaveAttribute('data-globe-pinned', 'true');
 }
@@ -48,7 +48,7 @@ test.describe('gliding wheel', () => {
   test.beforeEach(({ isMobile }) => test.skip(isMobile, 'touch layouts keep native scrolling (coarse pointer)'));
 
   test('is on with a fine pointer; a wheel notch glides instead of jumping and arrives', async ({ page }) => {
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     await expect(page.locator('html')).toHaveAttribute('data-smooth-wheel', 'on');
     await pointAtCentre(page);
     const y0 = await scrollY(page);
@@ -67,7 +67,7 @@ test.describe('gliding wheel', () => {
   });
 
   test('keyboard and scripted scrolls stay native and stop a glide at once', async ({ page }) => {
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     await skipIntro(page);
     await pointAtCentre(page);
     await page.mouse.wheel(0, 1200);
@@ -82,7 +82,7 @@ test.describe('gliding wheel', () => {
   });
 
   test('ctrl+wheel and wheels over an inner scroller are not taken over', async ({ page }) => {
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     // An inner scroller that can still scroll keeps the wheel.
     await page.evaluate(() => {
       const box = document.createElement('div');
@@ -106,7 +106,7 @@ test.describe('gliding wheel', () => {
 
   test('reduced motion turns it off', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     await expect(page.locator('html')).toHaveAttribute('data-smooth-wheel', 'off');
   });
 });
@@ -168,7 +168,7 @@ test.describe('pinned globe descent', () => {
 
   test('reduced motion: nothing pins and the hero has no descent', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openView(page, 'overview');
+    await openView(page, 'briefing');
     await expect(hero(page)).toHaveAttribute('data-globe-status', 'ready', { timeout: 5_000 });
     await expect(track(page)).toHaveAttribute('data-globe-pinned', 'false');
     await expect(page.locator('.globe-track__runway')).toHaveCount(0);
