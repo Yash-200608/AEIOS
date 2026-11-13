@@ -6,17 +6,19 @@ const text = (v: number, digits: number) => v.toFixed(digits);
 
 /*
  * A number that counts up to its value. It tweens from the value it last showed, only when the value really changes (a
- * new poll with the same value never re-plays it), and over `duration` ms (default 600).
+ * new poll with the same value never re-plays it), over `duration` ms (default 600).
  *  - `null` in, `null` out, at once: a missing value is never drawn as 0 or NaN, and a value that becomes missing mid-count
  *    stops the count and shows the missing state immediately.
- *  - Reduced motion, a hidden tab and the very first render show the final text with no tween.
+ *  - Reduced motion and a hidden tab show the final text with no tween; on first appearance (`intro`, default on) it counts up from 0.
  */
-export function useCountUp(value: number | null, opts: { duration?: number; digits?: number } = {}): string | null {
-  const { duration = 600, digits = 0 } = opts;
+export function useCountUp(value: number | null, opts: { duration?: number; digits?: number; intro?: boolean } = {}): string | null {
+  const { duration = 600, digits = 0, intro = true } = opts;
   const { reduced } = useMotionPolicy();
   const valid = value !== null && Number.isFinite(value) ? value : null;
-  const [shown, setShown] = useState<number | null>(valid);
-  const last = useRef<number | null>(valid);
+  // On first appearance the number counts up from 0 (a decoration of a value that is already current, never of a missing one).
+  const start0 = intro && !reduced && valid !== null;
+  const [shown, setShown] = useState<number | null>(start0 ? 0 : valid);
+  const last = useRef<number | null>(start0 ? 0 : valid);
 
   useEffect(() => {
     if (valid === null || last.current === null || reduced || document.hidden || valid === last.current) {

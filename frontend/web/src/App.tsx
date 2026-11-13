@@ -11,7 +11,7 @@ import { focusViewHeading } from './shell/focusHeading';
 import { DEFAULT_VIEW, VIEW_ALIASES, VIEW_IDS, type ViewId } from './shell/viewRegistry';
 import Rail from './shell/Rail';
 import TopBar from './shell/TopBar';
-import OverviewView from './views/OverviewView';
+import CommandDeck from './deck/CommandDeck';
 import BriefingView from './views/BriefingView';
 import type { OverviewProps } from './deck/useOverviewModel';
 import AirQualityView from './views/AirQualityView';
@@ -22,6 +22,7 @@ import StationView from './views/StationView';
 import { AeiosView, DispersionView, SatelliteView, SmokeView, TwinView } from './views/PanelViews';
 import { ModelRunContext, type LoadState, type ModelRunState, type StationState } from './views/shared';
 import './shell/views.css';
+import './shell/ambient.css';
 
 type Layer = SceneWeather['layer'];
 
@@ -152,13 +153,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const renderView = (id: ViewId) => {
     switch (id) {
       case 'overview':
-        return (
-          <OverviewView
-            primary={{ name: siteConfig.title, lat: siteConfig.lat, lon: siteConfig.lon }}
-            secondary={{ name: otherSite.title, lat: otherSite.lat, lon: otherSite.lon }}
-            overview={overviewProps}
-          />
-        );
+        return <CommandDeck overview={overviewProps} onSelectHour={setHourIndex} />;
       case 'briefing':
         return <BriefingView overview={overviewProps} />;
       case 'air-quality':

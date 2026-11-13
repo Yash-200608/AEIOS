@@ -1,0 +1,52 @@
+/*
+ * Ambient background behind the whole shell: a slowly drifting dot grid and one soft glow tinted by the deck's verdict
+ * (html[data-deck-tone], set by CommandDeck). Decoration only: no content, no pointer events. Browsers pause these
+ * animations in a hidden tab; reduced motion turns them off here.
+ */
+.dk-shell::before,
+.dk-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dk-shell::before {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--aeios-text-tertiary) 34%, transparent) 1px, transparent 1.4px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 75% 70% at 55% 45%, #000 20%, transparent 78%);
+  animation: dk-drift 70s linear infinite;
+}
+
+.dk-shell::after {
+  --dk-glow: var(--aeios-border-strong);
+
+  background: radial-gradient(ellipse 50% 45% at 62% 38%, color-mix(in srgb, var(--dk-glow) 16%, transparent), transparent 70%);
+  transition: background var(--aeios-dur-nav) var(--aeios-ease);
+}
+
+html[data-deck-tone='good'] .dk-shell::after { --dk-glow: var(--aeios-status-good); }
+html[data-deck-tone='fair'] .dk-shell::after { --dk-glow: var(--aeios-status-warning); }
+html[data-deck-tone='poor'] .dk-shell::after { --dk-glow: var(--aeios-status-critical); }
+
+.dk-shell > .main-content {
+  position: relative;
+  z-index: 1;
+}
+
+.dk-deck { --dk-tone: var(--aeios-border-strong); }
+html[data-deck-tone='good'] .dk-deck { --dk-tone: var(--aeios-status-good); }
+html[data-deck-tone='fair'] .dk-deck { --dk-tone: var(--aeios-status-warning); }
+html[data-deck-tone='poor'] .dk-deck { --dk-tone: var(--aeios-status-critical); }
+
+@keyframes dk-drift {
+  from { background-position: 0 0; }
+  to { background-position: 32px 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-shell::before { animation: none; }
+}
+
+html.aeios-force-reduced-motion .dk-shell::before { animation: none; }

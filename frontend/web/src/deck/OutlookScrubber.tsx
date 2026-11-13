@@ -22,6 +22,8 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
   const [drag, setDrag] = useState(false);
   const last = rows.length - 1;
   const at = selected === null ? 0 : Math.min(Math.max(selected, 0), Math.max(last, 0));
+  const atRef = useRef(at);
+  atRef.current = at;
 
   const { line, area, limitY } = useMemo(() => {
     const vals = rows.map((r) => r.vc).filter((v): v is number => v !== null && Number.isFinite(v));
@@ -56,16 +58,17 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
   };
   const onKey = (e: KeyboardEvent) => {
     if (off) return;
-    const to = e.key === 'ArrowRight' ? at + 1 : e.key === 'ArrowLeft' ? at - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? last : null;
+    const cur = atRef.current; // the latest index, so a held key (many events before the next render) keeps moving
+    const to = e.key === 'ArrowRight' ? cur + 1 : e.key === 'ArrowLeft' ? cur - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? last : null;
     if (to === null) return;
     e.preventDefault();
     setPlaying(false);
-    onSelect(Math.min(Math.max(to, 0), last));
+    const next = Math.min(Math.max(to, 0), last);
+    atRef.current = next;
+    onSelect(next);
   };
 
   // Play: one hour per STEP_MS, stops at the end, in a hidden tab, and when the data goes away.
-  const atRef = useRef(at);
-  atRef.current = at;
   useEffect(() => {
     if (!playing || off) return;
     const id = window.setInterval(() => {

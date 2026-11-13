@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import type { GlobeEngine } from '../components/globe/globeEngine';
 import { formatLatLon } from '../components/globe/globeMath';
-import type { GlobeSite } from '../components/globe/GlobeHero';
 import { useActiveLoop } from '../motion/useActiveLoop';
 import { useMotionPolicy } from '../motion/useMotionPolicy';
 import { bootSeen, rememberBoot, shouldBoot } from './boot';
@@ -16,6 +15,8 @@ import DecodeText from './DecodeText';
  * the canvas follows the cursor by at most PARALLAX_PX; both stop in a hidden tab, off-screen and under reduced motion.
  */
 const PARALLAX_PX = 8;
+
+export type GlobeSite = { name: string; lat: number; lon: number };
 
 export default function DeckStage({ site, verdict, tone, onBooted }: {
   site: GlobeSite; verdict: string; tone: 'good' | 'fair' | 'poor' | 'unknown'; onBooted?: () => void;
