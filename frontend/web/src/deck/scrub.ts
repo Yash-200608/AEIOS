@@ -1,0 +1,16 @@
+/* Pure helpers for the deck's outlook scrubber and status lamps. */
+
+/** The hour nearest to horizontal position x on a track `width` px wide holding `count` hours; null when there is nothing to pick. */
+export function scrubIndex(x: number, width: number, count: number): number | null {
+  if (!(count > 0) || !(width > 0)) return null;
+  if (count === 1) return 0;
+  const k = Math.min(1, Math.max(0, x / width));
+  return Math.round(k * (count - 1));
+}
+
+/** How a status lamp is drawn. Only a fresh or online state pulses: motion never implies liveness that is not there. */
+export function lampState(state: string): 'pulse' | 'steady' | 'dim' {
+  if (state === 'fresh' || state === 'online') return 'pulse';
+  if (state === 'checking') return 'steady';
+  return 'dim';
+}
