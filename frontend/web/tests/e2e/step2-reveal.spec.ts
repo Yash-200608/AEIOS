@@ -1,7 +1,6 @@
 /*
- * Step 2: Mission Reveal and status-label morph on the Overview. The Overview view opens on the globe landing, so the reveal keeps
- * its hidden start state and waits until the command center is scrolled into view (or "Open the command center" is used); then it
- * finishes within 2.5 s. It plays once per session, can be skipped and replayed, never blocks input, is skipped under reduced
+ * Step 2: Mission Reveal and status-label morph on the Briefing (the command center). The reveal starts when the command center is
+ * on screen and finishes within 2.5 s. It plays once per session, can be skipped and replayed, never blocks input, is skipped under reduced
  * motion, and is never triggered by data updates or by returning to the Overview.
  */
 import type { Page } from '@playwright/test';
@@ -16,43 +15,11 @@ const allOpaque = (page: Page) =>
       return cs.opacity === '1' && (cs.transform === 'none' || cs.transform === 'matrix(1, 0, 0, 1, 0, 0)');
     }),
   );
-/** The command center's top edge is below the reveal line (20 % above the viewport bottom) at this viewport. */
-const belowRevealLine = (page: Page) => page.locator(ROOT).evaluate((el) => el.getBoundingClientRect().top > window.innerHeight * 0.8);
 
 async function open(page: Page) {
   await openView(page, 'briefing');
   await expect(page.locator(ROOT)).toBeVisible();
 }
-
-test('the reveal waits below the globe landing, then plays when the command center is scrolled into view', async ({ page }) => {
-  await open(page);
-  const root = page.locator(ROOT);
-  test.skip(!(await belowRevealLine(page)), 'the command center already starts on screen at this viewport');
-  await expect(root).toHaveAttribute('data-reveal-state', 'playing');
-  await expect(root).toHaveAttribute('data-reveal-start', 'waiting');
-  // Its 2.2 s failsafe counts from the start, not from the mount: after 2.6 s of waiting it is still waiting, not "done".
-  await page.waitForTimeout(2_600);
-  await expect(root).toHaveAttribute('data-reveal-start', 'waiting');
-  await root.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
-  await expect(root).toHaveAttribute('data-reveal-start', 'started');
-  await expect(root).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
-  expect(await allOpaque(page)).toBe(true);
-});
-
-test('"Open the command center" starts the reveal and moves focus to the situation statement', async ({ page }) => {
-  await open(page);
-  // Where the globe hero pins, its call to action is fully on screen (a user scrolls there to reach it). Left to itself, a
-  // click would keep scrolling to centre the pinned button, which only advances the globe descent and fades the button out.
-  await page.getByTestId('globe-track').evaluate((el) => {
-    const hero = el.querySelector<HTMLElement>('[data-testid="globe-hero"]');
-    const pinTop = Number.parseFloat(hero?.style.getPropertyValue('--globe-pin-top') || '12');
-    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - pinTop, behavior: 'instant' });
-  });
-  await page.getByRole('button', { name: 'Open the command center' }).click();
-  await expect(page.locator('h1.cc-statement')).toBeFocused();
-  await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-state', 'done', { timeout: 4_000 });
-  await expect(page.locator('h1.cc-statement')).toBeInViewport();
-});
 
 test('the situation is never animated; groups and cells finish within 2.5 s and end fully shown', async ({ page }) => {
   await open(page);
@@ -69,7 +36,7 @@ test('the situation is never animated; groups and cells finish within 2.5 s and 
   await expect(page.locator('#briefing .cc-currency')).toContainText('Cached model run');
 });
 
-test('it plays once per session: a reload, or coming back to the Overview, shows everything at once', async ({ page }) => {
+test('it plays once per session: a reload, or coming back to the Briefing, shows everything at once', async ({ page }) => {
   await open(page);
   await revealCommandCenter(page);
   await page.reload();
@@ -79,7 +46,7 @@ test('it plays once per session: a reload, or coming back to the Overview, shows
 
   await navTo(page, 'forecast');
   await stageIdle(page);
-  await navTo(page, 'overview');
+  await navTo(page, 'briefing');
   await expect(page.locator(ROOT)).toBeVisible();
   expect(await state(page)).toBe('done');
   expect(await allOpaque(page)).toBe(true);
@@ -97,20 +64,6 @@ test('Skip ends it at once; Replay plays it again and it ends done', async ({ pa
   await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-state', 'playing');
   await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-state', 'done', { timeout: 2_500 });
   expect(await allOpaque(page)).toBe(true);
-});
-
-test('Skip while it is still waiting below the landing cancels the wait, shows everything and moves nothing', async ({ page }) => {
-  await open(page);
-  test.skip(!(await belowRevealLine(page)), 'the command center already starts on screen at this viewport');
-  await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-start', 'waiting');
-  const y0 = await page.evaluate(() => window.scrollY);
-  // A click event without scrolling the button into view (that would start the reveal by itself).
-  await page.getByRole('button', { name: 'Skip introduction animation' }).dispatchEvent('click');
-  await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-state', 'done');
-  await expect(page.locator(ROOT)).toHaveAttribute('data-reveal-start', 'started');
-  await expect.poll(() => allOpaque(page), { timeout: 400 }).toBe(true);
-  await page.waitForTimeout(400);
-  expect(await page.evaluate(() => window.scrollY)).toBe(y0);
 });
 
 test('while it plays, scrolling, focus and clicks still work', async ({ page }) => {

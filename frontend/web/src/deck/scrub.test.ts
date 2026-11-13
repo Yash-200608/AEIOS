@@ -22,3 +22,10 @@ test('only fresh or online states pulse', () => {
   assert.equal(lampState('error'), 'dim');
   assert.equal(lampState('checking'), 'steady');
 });
+test('a model feed lamp never pulses: a successful fetch is not proof the data is current now', () => {
+  assert.equal(lampState('online', 'feed'), 'steady');
+  assert.equal(lampState('fresh', 'feed'), 'steady');
+  assert.equal(lampState('stale', 'feed'), 'dim');
+  assert.equal(lampState('unavailable', 'feed'), 'dim');
+  assert.equal(lampState('online', 'node'), 'pulse');
+});

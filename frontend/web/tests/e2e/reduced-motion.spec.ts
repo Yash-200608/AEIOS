@@ -7,7 +7,7 @@ import { expect, intAttr, navTo, openView, stage, test } from './support';
 
 test.use({ reducedMotion: 'reduce' });
 
-test('overview: no CSS streak animation and the globe is a static final frame', async ({ page }) => {
+test('briefing: no CSS streak animation', async ({ page }) => {
   await openView(page, 'briefing');
   // The column (and its streak lanes) renders once the cached model run has loaded.
   await expect(page.locator('#briefing .cc-currency')).toContainText('Cached model run', { timeout: 15_000 });
@@ -15,10 +15,12 @@ test('overview: no CSS streak animation and the globe is a static final frame', 
     .locator('.cc-col-flow')
     .evaluateAll((els) => els.map((el) => getComputedStyle(el).animationName).filter((n) => n !== 'none'));
   expect(running, 'no .cc-col-flow element may run a CSS animation under reduced motion').toEqual([]);
+});
 
-  const hero = page.getByTestId('globe-hero');
-  await expect(hero).toHaveAttribute('data-globe-intro', 'done');
-  await expect(hero).toHaveAttribute('data-globe-copy', 'shown');
+test('command deck: the globe is a static final frame, with no boot and no loop', async ({ page }) => {
+  await openView(page, 'overview');
+  await expect(page.getByTestId('deck-stage')).toHaveAttribute('data-deck-boot', 'done');
+  await expect(page.getByTestId('command-deck')).toHaveAttribute('data-booted', 'true');
   const host = page.getByTestId('globe-canvas-host');
   await page.waitForTimeout(500); // give an (incorrect) loop time to start
   await expect(host).toHaveAttribute('data-globe-active', 'false');

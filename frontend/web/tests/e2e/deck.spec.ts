@@ -3,8 +3,9 @@
  * skipped, that the outlook scrubber drives the whole dashboard's selected hour, that nothing pulses for stale or failed data,
  * that reduced motion is static, and that a narrow window gets the desktop notice instead of the dashboard.
  */
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, PREVIEW, stage, stageIdle, test } from './support';
+import { expect, stage, stageIdle, test } from './support';
 
 const deck = (page: Page) => page.getByTestId('command-deck');
 
@@ -69,7 +70,8 @@ test('the outlook scrubber changes the selected hour for the whole dashboard', a
   await expect(slider).toHaveAttribute('aria-valuenow', '3');
   expect(await slider.getAttribute('aria-valuetext')).not.toBe(before);
   // The same hour is now selected everywhere: the atmospheric column's "valid" label follows it.
-  const label = await slider.getAttribute('aria-valuetext');
+  const label = (await page.locator('.dk-scrub__hour').textContent())?.trim() ?? '';
+  expect(await slider.getAttribute('aria-valuetext')).toContain(label);
   await expect(page.locator('.dk-deck__left')).toContainText(`valid ${label}`);
   await page.keyboard.press('End');
   await expect(slider).toHaveAttribute('aria-valuenow', /^\d+$/);
@@ -124,12 +126,48 @@ test.describe('reduced motion', () => {
   });
 });
 
-test('a narrow window shows the desktop notice instead of the dashboard, and widening restores it', async ({ page }) => {
+test('a narrow window shows the desktop notice instead of the dashboard, and widening restores it with its state', async ({ page }) => {
+  await openDeck(page);
+  await page.getByRole('radio', { name: 'Chandu village' }).click();
+  await expect(page.getByRole('radio', { name: 'Chandu village' })).toHaveAttribute('aria-checked', 'true');
   await page.setViewportSize({ width: 1000, height: 800 });
-  await page.goto(PREVIEW);
   await expect(page.getByRole('heading', { name: 'AEIOS Sentinel is built for desktop screens' })).toBeVisible();
-  await expect(deck(page)).toHaveCount(0);
+  await expect(deck(page)).toBeHidden();
   await page.setViewportSize({ width: 1300, height: 800 });
   await expect(deck(page)).toBeVisible();
   await expect(page.getByTestId('desktop-gate')).toHaveCount(0);
+  // The app was only hidden, not rebuilt: the selected site survived the round trip.
+  await expect(page.getByRole('radio', { name: 'Chandu village' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('the site switch is a radio group with arrow-key navigation and one tab stop', async ({ page }) => {
+  await openDeck(page);
+  const sgt = page.getByRole('radio', { name: 'SGT University' });
+  const chandu = page.getByRole('radio', { name: 'Chandu village' });
+  await expect(sgt).toHaveAttribute('tabindex', '0');
+  await expect(chandu).toHaveAttribute('tabindex', '-1');
+  await sgt.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(chandu).toBeChecked();
+  await expect(chandu).toBeFocused();
+});
+
+test('the deck has no serious or critical accessibility violations, and the verdict heading is named', async ({ page }) => {
+  await openDeck(page);
+  await expect(deck(page)).toHaveAttribute('data-booted', 'true', { timeout: 10_000 });
+  const r = await new AxeBuilder({ page })
+    .include('[data-testid="command-deck"]')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.help)).toEqual([]);
+  const heading = page.getByRole('heading', { level: 1 });
+  await expect(heading).toHaveCount(1);
+  await expect(heading).toHaveAccessibleName(/dispersion|weather model/i);
+});
+
+test('the deck labels the model source and the cached run next to the verdict', async ({ page }) => {
+  await openDeck(page);
+  await expect(page.locator('.dk-stage__note')).toContainText('Regional model · Open-Meteo · valid');
+  // Open-Meteo is blocked in tests, so the seeded (old) run is served and must be called a cached run.
+  await expect(page.locator('.dk-stage__note')).toContainText('cached run');
 });

@@ -33,6 +33,13 @@ export const fixed = (v: unknown, d = 0) => { const n = finiteOrNull(v); return 
 export function useOverviewModel(p: OverviewProps) {
   const liveAeios = useAeios();
   const liveAlerts = useAlerts();
+  // Freshness is a function of time, not only of new data: re-derive the health rows every 30 s, so a node whose packets stop
+  // goes from fresh to stale on screen even while the gateway poll keeps returning the same thing (or the same error).
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Development only: /?preview&fixture=<name> swaps in illustrative states. Removed from production builds.
   const fixtureName = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('fixture') : null;
@@ -86,7 +93,7 @@ export function useOverviewModel(p: OverviewProps) {
       nodes: rows, totalPackets: data?.totalPackets ?? 0, matureAt: MODEL_MATURE_PACKETS, warming: modelWarmingUp(data), fmtAgo: ago,
     });
     // `data` identity changes on each poll, which is when freshness must be recomputed.
-  }, [data, aeios.error, loaded, p.site]);
+  }, [data, aeios.error, loaded, p.site, tick]);
 
   const outcome = alertOutcome({
     alerts: alerts.alerts, error: alerts.error, siteCode: p.site === 'sgt' ? 'SGT' : 'CHANDU', nowMs: Date.now(), windowHours: ALERT_WINDOW_HOURS, observation,

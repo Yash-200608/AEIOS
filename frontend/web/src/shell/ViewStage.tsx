@@ -8,8 +8,8 @@ import { focusViewHeading } from './focusHeading';
 /*
  * The stage that holds exactly one view and plays the transition between views.
  *
- *  - Outgoing view: scales back, dims and blurs away (opacity, y 16 px, scale 0.97, blur 6 px) in 260 ms. Incoming view: rises 28 px
- *    into place from scale 1.02 and blur 8 px in 500 ms on the enter curve (command deck: decorative motion is allowed). Direction follows the navigation order: moving down the list slides up, moving up slides down.
+ *  - Outgoing view: scales back and dims away (opacity, y 16 px, scale 0.97) in 260 ms. Incoming view: rises 28 px
+ *    into place from scale 1.02 in 500 ms on the enter curve (command deck: decorative motion is allowed). Direction follows the navigation order: moving down the list slides up, moving up slides down.
  *    Only opacity and transform move; nothing is blurred and no value inside a view is animated by the stage.
  *  - A brief accent "scan" line sweeps across the top of the stage (transform and opacity only, once per change).
  *  - The new view starts at its top (instant scroll) and focus moves to its heading without scrolling. Neither happens on the
@@ -31,13 +31,12 @@ const EXIT_SCALE = 0.97;
 const FAILSAFE_MS = 1500; // "idle" even if an animation never reports completion (hidden tab, interrupted transition)
 
 const frameVariants: Variants = {
-  enter: (dir: number) => ({ opacity: 0, y: RISE_PX * dir, scale: 1.02, filter: 'blur(8px)' }),
-  center: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: { duration: ENTER_S, ease: [...motionTokens.ease.enter] } },
+  enter: (dir: number) => ({ opacity: 0, y: RISE_PX * dir, scale: 1.02 }),
+  center: { opacity: 1, y: 0, scale: 1, transition: { duration: ENTER_S, ease: [...motionTokens.ease.enter] } },
   exit: (dir: number) => ({
     opacity: 0,
     y: -DRIFT_PX * dir,
     scale: EXIT_SCALE,
-    filter: 'blur(6px)',
     transition: { duration: EXIT_S, ease: [...motionTokens.ease.exit] },
   }),
 };

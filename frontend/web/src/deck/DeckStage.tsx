@@ -18,8 +18,8 @@ const PARALLAX_PX = 8;
 
 export type GlobeSite = { name: string; lat: number; lon: number };
 
-export default function DeckStage({ site, verdict, tone, onBooted }: {
-  site: GlobeSite; verdict: string; tone: 'good' | 'fair' | 'poor' | 'unknown'; onBooted?: () => void;
+export default function DeckStage({ site, verdict, tone, note, onBooted }: {
+  site: GlobeSite; verdict: string; tone: 'good' | 'fair' | 'poor' | 'unknown'; note?: string; onBooted?: () => void;
 }) {
   const { reduced } = useMotionPolicy();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -148,11 +148,12 @@ export default function DeckStage({ site, verdict, tone, onBooted }: {
           <DecodeText text={verdict} playOnMount={playBoot} />
         </h1>
         <p className="dk-stage__coords ax-mono">{coords}</p>
+        {note && <p className="dk-stage__note">{note}</p>}
       </div>
       {!reduced && status !== 'fallback' && (
         <button type="button" className="dk-stage__pause" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
           {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
-          <span>{paused ? 'Resume globe' : 'Pause globe'}</span>
+          <span>Pause globe</span>
         </button>
       )}
     </section>

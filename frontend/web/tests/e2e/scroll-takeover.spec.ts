@@ -1,47 +1,19 @@
 /*
- * Scroll takeover: gliding mouse-wheel scrolling (src/motion/smoothWheel.ts) and the pinned globe descent on the Overview
- * (GlobeHero.tsx). The wheel eases toward its target instead of jumping; keyboard, scrollbar and scripted scrolls stay native and
- * stop a glide at once; inner scrollers keep their own wheel. The globe hero pins over a runway while scrolling flies the camera
- * down to the site through three captions, then releases. Every other view's header band pins while the content scrolls up over
+ * Scroll takeover: gliding mouse-wheel scrolling (src/motion/smoothWheel.ts). The wheel eases toward its target instead of
+ * jumping; keyboard, scrollbar and scripted scrolls stay native and stop a glide at once; inner scrollers keep their own wheel.
+ * Every view that has a header band (all but the command deck and the Briefing) pins while the content scrolls up over
  * it (the band is masked away under the content; its title words sink back into their masks). Reduced motion: native wheel, no
  * pin anywhere.
  */
 import type { Page } from '@playwright/test';
-import { VIEW_KEYS, expect, hasHorizontalOverflow, intAttr, openView, scrollToY, test, type ViewKey } from './support';
+import { VIEW_KEYS, expect, hasHorizontalOverflow, openView, scrollToY, test, type ViewKey } from './support';
 
-const hero = (page: Page) => page.getByTestId('globe-hero');
-const track = (page: Page) => page.getByTestId('globe-track');
-const host = (page: Page) => page.getByTestId('globe-canvas-host');
 const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
-const descent = async (page: Page) => Number.parseFloat((await hero(page).getAttribute('data-globe-descent')) ?? 'NaN');
 
 /** Wheel events go to the element under the pointer: put it in the middle of the viewport, whatever its size. */
 async function pointAtCentre(page: Page) {
   const size = page.viewportSize() ?? { width: 1280, height: 800 };
   await page.mouse.move(Math.round(size.width / 2), Math.round(size.height / 2));
-}
-
-async function skipIntro(page: Page) {
-  if ((await hero(page).getAttribute('data-globe-intro')) === 'playing')
-    await page.getByRole('button', { name: 'Skip globe intro' }).click();
-  await expect(hero(page)).toHaveAttribute('data-globe-intro', 'done');
-}
-
-/** Window scroll position at which the track has progressed `p` (0..1) through its runway. */
-async function trackY(page: Page, p: number): Promise<number> {
-  return track(page).evaluate((el, progress) => {
-    const heroEl = el.querySelector<HTMLElement>('[data-testid="globe-hero"]');
-    const pinTop = Number.parseFloat(heroEl?.style.getPropertyValue('--globe-pin-top') || '12');
-    const r = el.getBoundingClientRect();
-    const runway = r.height - (heroEl?.offsetHeight ?? 0);
-    return Math.round(window.scrollY + r.top - pinTop + runway * progress);
-  }, p);
-}
-
-async function readyPinned(page: Page) {
-  await openView(page, 'briefing');
-  await expect(hero(page)).toHaveAttribute('data-globe-status', 'ready', { timeout: 5_000 });
-  await expect(track(page)).toHaveAttribute('data-globe-pinned', 'true');
 }
 
 test.describe('gliding wheel', () => {
@@ -68,7 +40,6 @@ test.describe('gliding wheel', () => {
 
   test('keyboard and scripted scrolls stay native and stop a glide at once', async ({ page }) => {
     await openView(page, 'briefing');
-    await skipIntro(page);
     await pointAtCentre(page);
     await page.mouse.wheel(0, 1200);
     // Wheel input reaches the page asynchronously: wait until the glide is under way, but well short of its target.
@@ -111,72 +82,6 @@ test.describe('gliding wheel', () => {
   });
 });
 
-test.describe('pinned globe descent', () => {
-  test('the hero pins over the runway while the descent advances through three chapters, then releases', async ({ page }) => {
-    await readyPinned(page);
-    await skipIntro(page);
-    await expect(hero(page)).toHaveAttribute('data-globe-chapter', '0');
-    let previous = -1;
-    const chapters: string[] = [];
-    for (const p of [0.05, 0.25, 0.55, 0.85, 0.99]) {
-      await scrollToY(page, await trackY(page, p));
-      await expect.poll(() => descent(page)).toBeGreaterThan(previous);
-      previous = await descent(page);
-      const { top, pinTop } = await hero(page).evaluate((el) => ({
-        top: el.getBoundingClientRect().top,
-        pinTop: Number.parseFloat((el as HTMLElement).style.getPropertyValue('--globe-pin-top')),
-      }));
-      // (from 0.86 the hero recedes with a scale, which moves its box; it is still pinned, checked at 0.85)
-      if (p <= 0.85) expect(Math.abs(top - pinTop), `pinned at p=${p} (top ${top}, pin ${pinTop})`).toBeLessThan(2);
-      chapters.push((await hero(page).getAttribute('data-globe-chapter')) ?? '');
-    }
-    expect(chapters).toEqual(['0', '1', '2', '3', '3']);
-    // Past the runway the hero scrolls away with the page.
-    await scrollToY(page, (await trackY(page, 1)) + 600);
-    await expect.poll(() => hero(page).evaluate((el) => el.getBoundingClientRect().top)).toBeLessThan(-300);
-    expect(await hasHorizontalOverflow(page)).toBe(false);
-  });
-
-  test('scrolling draws frames even while the loop is paused, and the copy fades out', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'the Pause control is covered elsewhere; this checks scroll-driven frames');
-    await readyPinned(page);
-    await skipIntro(page);
-    await page.getByRole('button', { name: 'Pause globe rotation' }).click();
-    await expect(host(page)).toHaveAttribute('data-globe-active', 'false');
-    const f0 = await intAttr(host(page), 'data-globe-frames');
-    await scrollToY(page, await trackY(page, 0.4));
-    await expect.poll(() => intAttr(host(page), 'data-globe-frames')).toBeGreaterThan(f0);
-    await expect.poll(() => page.locator('.globe-hero__copy').evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(0.05);
-  });
-
-  test('scrolling during the intro hands over to the scroll (intro done)', async ({ page }) => {
-    await readyPinned(page);
-    await expect(hero(page)).toHaveAttribute('data-globe-intro', 'playing');
-    await scrollToY(page, await trackY(page, 0.3));
-    await expect(hero(page)).toHaveAttribute('data-globe-intro', 'done');
-  });
-
-  test('focus entering the faded copy scrolls back to where it is visible', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'keyboard focus check on desktop layouts');
-    await readyPinned(page);
-    await skipIntro(page);
-    await scrollToY(page, await trackY(page, 0.5));
-    await expect.poll(() => descent(page)).toBeGreaterThan(0.4);
-    await page.getByRole('button', { name: /Open the command center/ }).focus();
-    await expect.poll(() => descent(page)).toBeLessThan(0.02);
-  });
-
-  test('reduced motion: nothing pins and the hero has no descent', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openView(page, 'briefing');
-    await expect(hero(page)).toHaveAttribute('data-globe-status', 'ready', { timeout: 5_000 });
-    await expect(track(page)).toHaveAttribute('data-globe-pinned', 'false');
-    await expect(page.locator('.globe-track__runway')).toHaveCount(0);
-    await scrollToY(page, 600);
-    await expect.poll(() => descent(page)).toBe(0);
-  });
-});
-
 // ------------------------------------------------------------------------------------------------ pinned view heroes
 
 const heroTrack = (page: Page, view: ViewKey) => page.locator(`[data-view-id="${view}"] [data-testid="view-hero-track"]`);
@@ -193,7 +98,7 @@ async function heroY(page: Page, view: ViewKey, p: number): Promise<number> {
 }
 
 test.describe('pinned view heroes', () => {
-  for (const view of VIEW_KEYS.filter((key) => key !== 'overview')) {
+  for (const view of VIEW_KEYS.filter((key) => key !== 'overview' && key !== 'briefing')) {
     test(`${view}: the band pins, the content keeps its place and scrolls over it, then the band leaves`, async ({ page }) => {
       await openView(page, view);
       await expect(heroTrack(page, view)).toHaveAttribute('data-pinned', 'true');

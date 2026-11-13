@@ -8,9 +8,13 @@ export function scrubIndex(x: number, width: number, count: number): number | nu
   return Math.round(k * (count - 1));
 }
 
-/** How a status lamp is drawn. Only a fresh or online state pulses: motion never implies liveness that is not there. */
-export function lampState(state: string): 'pulse' | 'steady' | 'dim' {
-  if (state === 'fresh' || state === 'online') return 'pulse';
+/**
+ * How a status lamp is drawn. Only a fresh or online gateway or node pulses: motion never implies liveness that is not there.
+ * A model feed (weather, air quality) is fetched once per load and not polled, so a successful fetch says nothing about how
+ * current it is now: its lamp is steady at best.
+ */
+export function lampState(state: string, kind: 'node' | 'feed' = 'node'): 'pulse' | 'steady' | 'dim' {
+  if (state === 'fresh' || state === 'online') return kind === 'feed' ? 'steady' : 'pulse';
   if (state === 'checking') return 'steady';
   return 'dim';
 }

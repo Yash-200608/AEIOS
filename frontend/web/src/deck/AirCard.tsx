@@ -29,6 +29,7 @@ export default function AirCard({ aqi, pm25, warning, available }: { aqi: number
         </div>
       </div>
       <p className="dk-card__note">{available ? `${category ?? ''}${pm25 ? ` · PM2.5 ${pm25} µg/m³` : ''}` : warning || 'Air-quality model unavailable.'}</p>
+      {available && warning && <p className="dk-card__note">{warning}</p>}
     </DeckCard>
   );
 }

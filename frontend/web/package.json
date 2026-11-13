@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts src/components/globe/globeMath.test.ts src/shell/deskMode.test.ts src/deck/motionMath.test.ts src/deck/boot.test.ts src/deck/scrub.test.ts && vitest run src/lib src/sim",
+    "test": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts src/components/globe/globeMath.test.ts src/shell/deskMode.test.ts src/deck/motionMath.test.ts src/deck/boot.test.ts src/deck/scrub.test.ts src/deck/hours.test.ts && vitest run src/lib src/sim",
     "test:unit": "node --test src/components/overview/model.test.ts src/motion/changes.test.ts src/components/globe/globeMath.test.ts src/shell/deskMode.test.ts src/deck/motionMath.test.ts src/deck/boot.test.ts src/deck/scrub.test.ts",
     "test:sim": "vitest run src/lib src/sim",
     "typecheck": "tsc -b",

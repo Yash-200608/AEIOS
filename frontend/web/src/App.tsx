@@ -14,6 +14,7 @@ import TopBar from './shell/TopBar';
 import CommandDeck from './deck/CommandDeck';
 import BriefingView from './views/BriefingView';
 import type { OverviewProps } from './deck/useOverviewModel';
+import { nearestHourIndex } from './deck/hours';
 import AirQualityView from './views/AirQualityView';
 import ForecastView from './views/ForecastView';
 import AtmosphereView from './views/AtmosphereView';
@@ -77,15 +78,7 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
       setLoadState('ready');
       const hourlyTimes = forecastResult.data.hourly?.time || [];
       const currentTime = String((forecastResult.data.current as any)?.time || '');
-      if (currentTime && hourlyTimes.length) {
-        let nearest = 0;
-        let distance = Number.POSITIVE_INFINITY;
-        hourlyTimes.forEach((time, i) => {
-          const d = Math.abs(new Date(String(time)).getTime() - new Date(currentTime).getTime());
-          if (Number.isFinite(d) && d < distance) { nearest = i; distance = d; }
-        });
-        setHourIndex(nearest);
-      }
+      if (currentTime && hourlyTimes.length) setHourIndex(nearestHourIndex(hourlyTimes, currentTime));
       const firstDate = String(forecastResult.data.daily?.time?.[0] || '');
       setSelectedDate((old) => old || firstDate);
     } catch (error) {

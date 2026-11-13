@@ -59,7 +59,7 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
   const onKey = (e: KeyboardEvent) => {
     if (off) return;
     const cur = atRef.current; // the latest index, so a held key (many events before the next render) keeps moving
-    const to = e.key === 'ArrowRight' ? cur + 1 : e.key === 'ArrowLeft' ? cur - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? last : null;
+    const to = e.key === 'ArrowRight' ? cur + 1 : e.key === 'ArrowLeft' ? cur - 1 : e.key === 'PageUp' ? cur + 6 : e.key === 'PageDown' ? cur - 6 : e.key === 'Home' ? 0 : e.key === 'End' ? last : null;
     if (to === null) return;
     e.preventDefault();
     setPlaying(false);
@@ -81,6 +81,8 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
   useEffect(() => { if (off) setPlaying(false); }, [off]);
 
   const label = rows[at] ? localSlot(rows[at].time) : '—';
+  const vcNow = rows[at]?.vc ?? null;
+  const valueText = vcNow === null ? label : `${label}, ventilation ${Math.round(vcNow).toLocaleString('en-IN')} m²/s, ${vcNow < poorAt ? 'below' : 'at or above'} the poor limit`;
   const pct = rows.length <= 1 ? 0 : (at / (rows.length - 1)) * 100;
   return (
     <div className="dk-scrub" data-disabled={off ? 'true' : undefined}>
@@ -91,10 +93,10 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
       </div>
       <div className="dk-scrub__row">
         <button type="button" className="dk-scrub__btn" aria-label="Previous hour" disabled={off || at <= 0} onClick={() => { setPlaying(false); onSelect(at - 1); }}><ChevronLeft size={16} aria-hidden="true" /></button>
-        <button type="button" className="dk-scrub__btn" aria-label={playing ? 'Pause outlook playback' : 'Play outlook'} aria-pressed={playing} disabled={off} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause size={15} aria-hidden="true" /> : <Play size={15} aria-hidden="true" />}</button>
+        <button type="button" className="dk-scrub__btn" aria-label="Play outlook" aria-pressed={playing} disabled={off} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause size={15} aria-hidden="true" /> : <Play size={15} aria-hidden="true" />}</button>
         <div
           ref={track} className="dk-scrub__track" role="slider" tabIndex={off ? -1 : 0} aria-disabled={off ? 'true' : undefined} aria-label="Forecast hour"
-          aria-valuemin={0} aria-valuemax={Math.max(last, 0)} aria-valuenow={at} aria-valuetext={label}
+          aria-valuemin={0} aria-valuemax={Math.max(last, 0)} aria-valuenow={at} aria-valuetext={valueText}
           data-dragging={drag ? 'true' : undefined}
           onPointerDown={onDown} onPointerMove={(e) => drag && pick(e.clientX)} onPointerUp={() => setDrag(false)} onPointerCancel={() => setDrag(false)} onKeyDown={onKey}
         >

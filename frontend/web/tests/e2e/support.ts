@@ -133,6 +133,7 @@ export async function openView(page: Page, view: ViewKey = 'overview'): Promise<
 }
 
 /** The dashboard is desktop only (no drawer): kept so older specs compile; always false. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const isCompact = async (_page: Page) => false;
 
 /**

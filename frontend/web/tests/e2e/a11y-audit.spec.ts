@@ -12,7 +12,6 @@ async function open(page: Page, fixture = 'normal') {
   await page.goto(`/?preview&fixture=${fixture}#/briefing`);
   await revealCommandCenter(page, fixture === 'feederror' ? /unavailable/ : 'Cached model run');
   await expect(page.locator('#briefing .cc-currency .ax-state').filter({ hasText: /^Node/ })).toHaveCount(1);
-  await expect(page.getByTestId('globe-hero')).toHaveAttribute('data-globe-intro', 'done', { timeout: 8_000 });
 }
 
 for (const fixture of ['normal', 'stale', 'gatewayoffline']) {
@@ -21,7 +20,6 @@ for (const fixture of ['normal', 'stale', 'gatewayoffline']) {
     const r = await new AxeBuilder({ page })
       .include('#briefing')
       .include('#primary-nav')
-      .include('[data-testid="globe-hero"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
       .analyze();
     const all = r.violations.map((v) => `${v.impact} ${v.id} x${v.nodes.length}: ${v.help}`);
@@ -39,7 +37,6 @@ test('accessibility tree: one current nav item, named lanes with units, labels t
     ['currency', '#briefing .cc-currency'],
     ['rail', '#briefing .cc-rail'],
     ['reveal-controls', '#briefing .cc-reveal-controls'],
-    ['globe-hero', '[data-testid="globe-hero"]'],
   ] as const) {
     const snap = await page.locator(sel).first().ariaSnapshot();
     await info.attach(`aria-${name}.yml`, { body: snap, contentType: 'text/yaml' });
@@ -48,7 +45,7 @@ test('accessibility tree: one current nav item, named lanes with units, labels t
   const current = await page
     .locator('#primary-nav [aria-current]')
     .evaluateAll((els) => els.map((e) => `${e.getAttribute('aria-current')}:${e.textContent?.trim()}`));
-  expect(current).toEqual(['page:Overview']);
+  expect(current).toEqual(['page:Briefing']);
   // Every lane is reachable and named with its value and unit (or says it is not available).
   const lanes = await page
     .locator('.cc-column .cc-col-lane')
@@ -108,12 +105,8 @@ test('keyboard: Tab reaches the globe controls, the reveal controls, the column 
     }
     if (seen.some((s) => /^180 m/.test(s))) break;
   }
-  info.annotations.push({ type: 'tab order (Overview view)', description: seen.join(' > ') });
-  // The globe landing comes first (its call to action, then its controls; the intro has ended, so the toggle offers Replay),
-  // then the command center.
-  const landing = ['Open the command center', 'Replay globe intro', 'Pause globe rotation'].map((n) => seen.indexOf(n));
-  expect(landing.every((i) => i >= 0)).toBe(true);
-  expect(seen.indexOf('Skip introduction animation')).toBeGreaterThan(Math.max(...landing));
+  info.annotations.push({ type: 'tab order (Briefing view)', description: seen.join(' > ') });
+  // The Briefing's reveal controls come first, then the column toggle and every lane.
   expect(seen).toContain('Skip introduction animation');
   expect(seen).toContain('Replay introduction animation');
   expect(seen.some((s) => /wind flow animation/.test(s))).toBe(true);
@@ -167,7 +160,7 @@ test('no live regions were added by the motion work', async ({ page }, info) => 
   expect(
     await page
       .locator(
-        '[data-testid="globe-hero"] [aria-live], [data-testid="globe-hero"] [role="status"], [data-testid="view-stage"][aria-live], [data-testid="scroll-progress"][aria-live]',
+        '[data-testid="view-stage"][aria-live], [data-testid="scroll-progress"][aria-live]',
       )
       .count(),
   ).toBe(0);
@@ -178,9 +171,10 @@ test('every view: one h1 (its name, programmatically focusable), and no serious 
   page,
 }, info) => {
   test.slow(); // eleven views, an axe run each
-  await openView(page, 'briefing');
+  await openView(page, 'overview');
   const legacy: string[] = [];
-  for (const view of VIEW_KEYS.filter((v) => v !== 'overview')) {
+  // The command deck and the Briefing have their own headings (the verdict and the situation statement), checked in deck.spec and overview.spec.
+  for (const view of VIEW_KEYS.filter((v) => v !== 'overview' && v !== 'briefing')) {
     await navTo(page, view);
     await stageIdle(page);
     const hero = page.locator('[data-view-heading]');
@@ -193,7 +187,7 @@ test('every view: one h1 (its name, programmatically focusable), and no serious 
     const shell = await new AxeBuilder({ page })
       .include('.view-hero')
       .include('#primary-nav')
-      .include('.topbar')
+      .include('.dk-top')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
     const serious = shell.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');

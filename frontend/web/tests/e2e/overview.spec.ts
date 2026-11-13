@@ -20,17 +20,17 @@ import {
 const FIXTURES = ['normal', 'stale', 'noreading', 'gatewayoffline', 'alert', 'feederror'] as const;
 
 for (const name of FIXTURES) {
-  test(`overview: fixture ${name}`, async ({ page, context }, testInfo) => {
+  test(`briefing: fixture ${name}`, async ({ page, context }, testInfo) => {
     await page.goto(`/?preview&fixture=${name}#/briefing`);
-    await expect(stage(page)).toHaveAttribute('data-view', 'overview');
+    await expect(stage(page)).toHaveAttribute('data-view', 'briefing');
     const overview = page.locator('#briefing');
     // The fixture banner proves the fixture (not live data) is what is rendered.
     await expect(overview.locator('.cc-dev')).toContainText(`"${name}"`);
 
-    // One h1 in the view: the situation statement. The globe landing's title is an h2.
+    // One h1 in the view: the situation statement (focusable, so a view change can move focus to it).
     await expect(page.locator('h1.cc-statement')).toBeVisible();
-    await expect(page.locator('[data-view-id="overview"] h1')).toHaveCount(1);
-    await expect(page.getByTestId('globe-hero').locator('h2')).toHaveCount(1);
+    await expect(page.locator('[data-view-id="briefing"] h1')).toHaveCount(1);
+    await expect(page.locator('h1.cc-statement')).toHaveAttribute('data-view-heading', '');
 
     await revealCommandCenter(page, name === 'feederror' ? /unavailable/ : 'Cached model run');
 
@@ -55,13 +55,11 @@ for (const name of FIXTURES) {
 
     expect(await hasHorizontalOverflow(page), 'page must not scroll horizontally').toBe(false);
 
-    // Accessibility: fail on serious/critical, report the rest. The globe intro has ended (scrolled away, or done) and finite
+    // Accessibility: fail on serious/critical, report the rest. Finite
     // reveal animations are waited for, so mid-fade opacity does not produce false colour-contrast results.
-    await expect(page.getByTestId('globe-hero')).toHaveAttribute('data-globe-intro', 'done', { timeout: 8_000 });
     await settleFiniteAnimations(page).catch(() => undefined);
     const axe = await new AxeBuilder({ page })
       .include('#briefing')
-      .include('[data-testid="globe-hero"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
     const summary = axe.violations.map((v) => `${v.impact ?? 'unknown'} ${v.id} (${v.nodes.length}): ${v.help}`);

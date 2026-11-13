@@ -21,12 +21,14 @@ function Stat({ label, value, unit, digits = 0 }: { label: string; value: number
  * failed load is "unknown", not zero.
  */
 export default function StationCard({ model }: { model: OverviewModel }) {
-  const current = model.observation === 'valid' && !model.failed;
+  const current = model.loaded && model.observation === 'valid' && !model.failed;
   const v = model.values;
   return (
     <DeckCard title="Local station" source="live" sourceDetail={model.reading.node ? `Node ${model.reading.node}` : undefined} data-station-state={model.stationState}>
-      <div className="dk-station__state"><StateLabel state={model.stationState} /><span className="dk-dim">{model.failed ? '—' : model.packetAgo}</span></div>
-      {current ? (
+      <div className="dk-station__state"><StateLabel state={model.stationState} /><span className="dk-dim">{!model.loaded || model.failed ? '—' : model.packetAgo}</span></div>
+      {!model.loaded ? (
+        <div className="dk-station__none"><strong>Checking the gateway…</strong></div>
+      ) : current ? (
         <div className="dk-stats">
           <Stat label="PM2.5" value={v.pm25} unit="µg/m³" />
           <Stat label="PM10" value={v.pm10} unit="µg/m³" />

@@ -46,7 +46,18 @@ export default function TopBar({ view, site, onSite, loading, onRefresh, userEma
             {SITES.map(({ id, name }) => {
               const on = site === id;
               return (
-                <button key={id} type="button" role="radio" aria-checked={on} className={on ? 'dk-sites__opt is-on' : 'dk-sites__opt'} onClick={() => onSite(id)}>
+                <button
+                  key={id} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-site={id}
+                  className={on ? 'dk-sites__opt is-on' : 'dk-sites__opt'} onClick={() => onSite(id)}
+                  onKeyDown={(e) => {
+                    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+                    if (!step) return;
+                    e.preventDefault();
+                    const next = SITES[(SITES.findIndex((x) => x.id === id) + step + SITES.length) % SITES.length];
+                    onSite(next.id);
+                    (e.currentTarget.parentElement?.querySelector(`[data-site="${next.id}"]`) as HTMLElement | null)?.focus();
+                  }}
+                >
                   {on && <m.span layoutId="site-thumb" className="dk-sites__thumb" aria-hidden="true" transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 460, damping: 38 }} />}
                   <span className="dk-sites__name">{name}</span>
                 </button>

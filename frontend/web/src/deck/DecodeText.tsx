@@ -4,7 +4,7 @@ import { decodeFrame } from './motionMath';
 
 /*
  * Text that decodes into place when it changes (and once on first appearance when `playOnMount` is set). The real text is
- * always in aria-label and the animated span is aria-hidden, so assistive technology never reads the scramble. Reduced
+ * always in a visually hidden span and the animated span is aria-hidden, so assistive technology never reads the scramble. Reduced
  * motion and a hidden tab show the final text at once.
  */
 export default function DecodeText({ text, className, durationMs = 700, playOnMount = false }: { text: string; className?: string; durationMs?: number; playOnMount?: boolean }) {
@@ -31,7 +31,8 @@ export default function DecodeText({ text, className, durationMs = 700, playOnMo
   }, [text, reduced, durationMs]);
 
   return (
-    <span className={className} aria-label={text}>
+    <span className={className}>
+      <span className="dk-sr">{text}</span>
       <span aria-hidden="true">{shown}</span>
     </span>
   );

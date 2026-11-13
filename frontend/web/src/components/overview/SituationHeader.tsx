@@ -25,7 +25,7 @@ export default function SituationHeader({ cls, loadState, site, subtitle, lat, l
         <span className="cc-situation__site"><MapPin size={14} aria-hidden="true" /> <b>{site}</b> · {subtitle}</span>
         <span className="ax-mono cc-dim">{lat.toFixed(4)}° N, {lon.toFixed(4)}° E</span>
       </div>
-      <h1 className={`cc-statement cc-statement--${s.tone}`}>
+      <h1 tabIndex={-1} data-view-heading="" className={`cc-statement cc-statement--${s.tone}`}>
         {loadState === 'loading' && <span className="cc-dim">Reading the regional weather model…</span>}
         {loadState === 'error' && <><ServerCrash size={30} aria-hidden="true" /> <span>The weather model is unavailable, so dispersion cannot be assessed.</span></>}
         {loadState === 'ready' && <><Icon size={34} aria-hidden="true" /> <span>{s.tone === 'unknown' ? `Dispersion at ${site} cannot be assessed right now.` : <>{s.lead.replace(/\.$/, '')} <span className="cc-statement__site">at {site}.</span></>}</span></>}
