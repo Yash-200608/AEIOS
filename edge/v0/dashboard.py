@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 import gwdb
 COLS = "id,rx_utc,source,node,boot,node_time,temp,rh,pressure,gas_kohm,pm1,pm2_5,pm10,mq_mv,lat,lon,fix,sats,rssi,snr"
-PERIOD_S = 300
+PERIOD_S = float(os.environ.get("AEIOS_PERIOD_S", "300"))   # expected seconds between a node's packets (5 s for a live demo)
 # India CPCB National AQI breakpoints for PM2.5 (defined for 24 h averages of reference instruments; shown as indicative only)
 BANDS = [(30, "Good"), (60, "Satisfactory"), (90, "Moderate"), (120, "Poor"), (250, "Very poor"), (float("inf"), "Severe")]
 

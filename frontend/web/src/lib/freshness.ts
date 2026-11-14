@@ -45,18 +45,27 @@ let state: State = { data: null, error: '' };
 const listeners = new Set<(s: State) => void>();
 let timer: ReturnType<typeof setInterval> | undefined;
 
+/*
+ * Poll rate. Normally 30 s. Open the dashboard with ?live (for a demo) and it re-reads the gateway data every second, so a node's
+ * packets show up as they arrive. Only the node data is read this fast; weather and air-quality models keep their own cadence.
+ */
+export const POLL_MS = new URLSearchParams(window.location.search).has('live') ? 1_000 : 30_000;
+
+let inFlight = false; // a slow request is never overlapped by the next tick
 function refresh() {
+  if (inFlight) return;
+  inFlight = true;
   api.aeios()
     .then((data) => { state = { data, error: '' }; })
     .catch((e) => { state = { data: state.data, error: String(e?.message || e) }; })
-    .finally(() => listeners.forEach((l) => l(state)));
+    .finally(() => { inFlight = false; listeners.forEach((l) => l(state)); });
 }
 
 export function useAeios(): State {
   const [s, setS] = useState(state);
   useEffect(() => {
     listeners.add(setS);
-    if (listeners.size === 1) { refresh(); timer = setInterval(refresh, 30_000); } else setS(state);
+    if (listeners.size === 1) { refresh(); timer = setInterval(refresh, POLL_MS); } else setS(state);
     return () => {
       listeners.delete(setS);
       if (!listeners.size && timer) { clearInterval(timer); timer = undefined; }

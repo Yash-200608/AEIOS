@@ -73,7 +73,8 @@ def main():
     ap.add_argument("--db", default=os.path.join(HERE, "gateway.db"))
     ap.add_argument("--state", default=os.path.join(HERE, "uploader_state.json"))
     ap.add_argument("--sources", default="lora", help="comma-separated packet sources to upload (default: lora = real radio only)")
-    ap.add_argument("--poll", type=float, default=10.0, help="seconds between checks")
+    ap.add_argument("--poll", type=float, default=10.0, help="seconds between checks (1 for a live demo)")
+    ap.add_argument("--heartbeat", type=float, default=10.0, help="seconds between gateway heartbeats (kept apart from --poll so a 1 s poll does not send one every second)")
     ap.add_argument("--once", action="store_true", help="upload what is pending and exit")
     ap.add_argument("--dry-run", action="store_true", help="print what would be sent, send nothing")
     a = ap.parse_args()
@@ -92,6 +93,7 @@ def main():
     state = load_state(a.state)
     log(f"uploader started: device {device}, db {a.db}, sources {sources}, resume {state}")
     backoff = 5
+    last_beat = 0.0
 
     while not stop:
         sent_any = False
@@ -130,7 +132,8 @@ def main():
                     log(f"{table}: sent {len(rows)} rows (up to id {state[table]}), cloud stored {res.get('stored', '?')}")
                 if failed:
                     break
-            if not failed and not a.dry_run:
+            if not failed and not a.dry_run and time.monotonic() - last_beat >= a.heartbeat:
+                last_beat = time.monotonic()
                 try:
                     post(url, token, {"device_id": device, "table": "heartbeat", "rows": [{"info": {"state": state}}]})
                 except (urllib.error.URLError, OSError, ValueError, urllib.error.HTTPError):
