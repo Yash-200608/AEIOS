@@ -84,7 +84,9 @@ test('a current station reading shows numbers and a pulsing lamp', async ({ page
   const card = page.locator('[data-station-state]');
   await expect(card).toHaveAttribute('data-station-state', 'fresh');
   await expect(card.locator('.dk-stat').first()).toBeVisible();
-  await expect(page.locator('.dk-lamp[data-lamp="pulse"]').first()).toBeVisible();
+  // The gateway and the nodes pulse because their data is fresh; the weather and air-quality feed lamps never do.
+  await expect(page.locator('.dk-lamp', { hasText: /^N1/ })).toHaveAttribute('data-lamp', 'pulse');
+  await expect(page.locator('.dk-lamp', { hasText: /Open-Meteo/ })).not.toHaveAttribute('data-lamp', 'pulse');
 });
 
 test('a stale station shows no numbers and nothing pulses for it', async ({ page }) => {
@@ -170,4 +172,15 @@ test('the deck labels the model source and the cached run next to the verdict', 
   await expect(page.locator('.dk-stage__note')).toContainText('Regional model · Open-Meteo · valid');
   // Open-Meteo is blocked in tests, so the seeded (old) run is served and must be called a cached run.
   await expect(page.locator('.dk-stage__note')).toContainText('cached run');
+});
+
+test('an active smoke alert banner shrinks the deck instead of making the page scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?preview&fixture=normal&mockalerts');
+  await expect(stage(page)).toHaveAttribute('data-view', 'overview');
+  await stageIdle(page);
+  await expect(page.locator('.smoke-banner, [data-testid="smoke-banner"], [role="alert"]').first()).toBeVisible({ timeout: 10_000 });
+  await expect(deck(page)).toHaveAttribute('data-booted', 'true', { timeout: 10_000 });
+  const over = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+  expect(over, 'document taller than the window by (px)').toBeLessThanOrEqual(1);
 });

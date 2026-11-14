@@ -62,7 +62,6 @@ export default function App({ userEmail = '', onSignOut }: { userEmail?: string;
   const modelRun: ModelRunState = forecastMeta?.stale && loadState === 'ready' ? { fetchedAt: lastUpdated } : null;
 
   const siteConfig = SITES[site];
-  const otherSite = SITES[site === 'sgt' ? 'chandu' : 'sgt'];
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoadState('loading');

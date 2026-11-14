@@ -50,3 +50,4 @@ html[data-deck-tone='poor'] .dk-deck { --dk-tone: var(--aeios-status-critical); 
 }
 
 html.aeios-force-reduced-motion .dk-shell::before { animation: none; }
+html.aeios-force-reduced-motion .dk-shell::after { transition: none; }

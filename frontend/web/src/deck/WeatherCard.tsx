@@ -28,6 +28,7 @@ export default function WeatherCard({ current }: { current: Record<string, any> 
           <Num label="Temp" value={finiteOrNull(current.temperature_2m)} unit="°C" digits={1} />
           <Num label="Humidity" value={finiteOrNull(current.relative_humidity_2m)} unit="%" />
           <Num label="Pressure" value={finiteOrNull(current.pressure_msl)} unit="hPa" />
+          <Num label="UV index" value={finiteOrNull(current.uv_index)} unit="" digits={1} />
         </div>
       </div>
     </DeckCard>

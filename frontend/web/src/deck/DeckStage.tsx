@@ -27,6 +27,7 @@ export default function DeckStage({ site, verdict, tone, note, onBooted }: {
   const shiftRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GlobeEngine | null>(null);
   const siteRef = useRef({ lat: site.lat, lon: site.lon });
+  const skipAsked = useRef(false); // a key press or site switch that arrived before the engine existed
   const [playBoot] = useState(() => shouldBoot(bootSeen(), reduced));
   const [boot, setBoot] = useState<'playing' | 'done'>(playBoot ? 'playing' : 'done');
   const [paused, setPaused] = useState(false);
@@ -56,11 +57,11 @@ export default function DeckStage({ site, verdict, tone, note, onBooted }: {
         if (cancelled) return;
         engine = createGlobeEngine({
           host, label: labelRef.current, site: siteRef.current, land: decodeLandDots(1),
-          introDone: !playBoot, onReveal: () => undefined, onDone: finish,
+          introDone: !playBoot || skipAsked.current, onReveal: () => undefined, onDone: finish,
         });
         engineRef.current = engine;
         engine.setDescent(0);
-        if (!playBoot) finish();
+        if (!playBoot || skipAsked.current) finish();
         setStatus('ready');
       })
       .catch(() => {
@@ -80,7 +81,10 @@ export default function DeckStage({ site, verdict, tone, note, onBooted }: {
     const changed = siteRef.current.lat !== site.lat || siteRef.current.lon !== site.lon;
     siteRef.current = { lat: site.lat, lon: site.lon };
     engineRef.current?.setSite(siteRef.current);
-    if (changed) engineRef.current?.skip();
+    if (changed) {
+      if (engineRef.current) engineRef.current.skip();
+      else skipAsked.current = true;
+    }
   }, [site.lat, site.lon]);
 
   // Loop: runs only while allowed (visible, tab active, not paused, motion allowed). A stopped fly-in jumps to its end frame.
@@ -102,7 +106,10 @@ export default function DeckStage({ site, verdict, tone, note, onBooted }: {
   // Any key or pointer press skips the boot (never blocks the input itself: listeners are passive and do not stop it).
   useEffect(() => {
     if (boot !== 'playing') return;
-    const skip = () => engineRef.current?.skip();
+    const skip = () => {
+      if (engineRef.current) engineRef.current.skip();
+      else skipAsked.current = true;
+    };
     window.addEventListener('keydown', skip, { passive: true });
     window.addEventListener('pointerdown', skip, { passive: true });
     return () => {
@@ -147,7 +154,7 @@ export default function DeckStage({ site, verdict, tone, note, onBooted }: {
         <h1 tabIndex={-1} data-view-heading className="dk-stage__verdict">
           <DecodeText text={verdict} playOnMount={playBoot} />
         </h1>
-        <p className="dk-stage__coords ax-mono">{coords}</p>
+        <p className="dk-stage__coords ax-mono"><DecodeText text={coords} playOnMount={playBoot} durationMs={1100} /></p>
         {note && <p className="dk-stage__note">{note}</p>}
       </div>
       {!reduced && status !== 'fallback' && (

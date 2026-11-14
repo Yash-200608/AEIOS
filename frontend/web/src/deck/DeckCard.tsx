@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { SourceLabel, type SourceKind } from '../design/primitives';
 
 /* A card on the command deck: a cursor-following highlight (--mx/--my, written once per frame) and a lift on hover (CSS). */
@@ -7,6 +7,7 @@ export default function DeckCard({ title, source, sourceDetail, className, child
 }) {
   const ref = useRef<HTMLElement>(null);
   const raf = useRef(0);
+  useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
   const onMove = (e: PointerEvent) => {
     const el = ref.current;
     if (!el || raf.current) return;

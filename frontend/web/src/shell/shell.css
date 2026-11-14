@@ -326,3 +326,7 @@
     transition: none;
   }
 }
+
+html.aeios-force-reduced-motion :is(.dk-rail, .dk-rail__brand-text, .dk-rail__label, .dk-rail__group span, .dk-rail__icon, .dk-rail__item, .dk-sites__opt) {
+  transition: none;
+}

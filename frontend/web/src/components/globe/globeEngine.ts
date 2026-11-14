@@ -19,7 +19,7 @@ import {
 } from './globeMath';
 
 /*
- * Plain three.js dot-matrix Earth for the Overview landing (no React Three Fiber). Loaded lazily by GlobeHero.
+ * Plain three.js dot-matrix Earth for the command deck (no React Three Fiber). Loaded lazily by DeckStage.
  *
  * Scene: a very dark ocean sphere with a soft light gradient and fresnel rim, land as soft round points (Natural Earth
  * 1:110m, see landDots.ts), a faint 30-degree graticule, a back-side fresnel atmosphere shell, a static star field and one
@@ -31,7 +31,7 @@ import {
  * independent (dt in seconds, clamped to 0.1 s) and Skip/Replay are exact. The scroll descent (setDescent, 0..1) is
  * composed on top of the intro/idle pose (globeMath.descentPose), so scrolling and time never fight over the camera.
  *
- * Framing: the canvas covers the whole hero. The resting globe is sized to fit the box GlobeHero measures (setRestBox) and
+ * Framing: the canvas covers the whole stage. The resting globe is sized to fit the box the host measures (setRestBox) and
  * centred on it with camera.setViewOffset; the descent moves that centre to the middle of the canvas.
  *
  * Loop: start()/stop() are driven by useActiveLoop. When stopped no requestAnimationFrame is scheduled at all; single frames
@@ -51,7 +51,7 @@ export type GlobeEngineOptions = {
   land: Float32Array;
   /** Start at the final frame (intro already seen this session, or reduced motion). */
   introDone: boolean;
-  /** Where the resting globe sits on the canvas (fractions); the canvas covers the whole hero. Default: the whole canvas. */
+  /** Where the resting globe sits on the canvas (fractions); the canvas covers the whole stage. Default: the whole canvas. */
   restBox?: FrameBox;
   onReveal(): void;
   onDone(): void;
@@ -253,7 +253,7 @@ export function createGlobeEngine(options: GlobeEngineOptions): GlobeEngine {
   const surfaceTone = token('--aeios-surface-2', '#141f29');
   const starTone = token('--aeios-text-secondary', '#b3c0cc');
 
-  // Throws when WebGL is unavailable; GlobeHero catches it and keeps its static fallback.
+  // Throws when WebGL is unavailable; DeckStage catches it and keeps its static fallback.
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
   renderer.setPixelRatio(pixelRatio);

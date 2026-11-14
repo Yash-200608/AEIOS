@@ -12,9 +12,8 @@
   grid-template-columns: 300px minmax(0, 1fr) 340px;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: var(--dk-gap);
-  /* top bar 56 + this grid's top margin 16 + the main area's bottom padding 32 = 104: the deck is exactly one screen tall. */
-  height: calc(100vh / var(--desk-scale, 1) - 104px);
-  min-height: 560px; /* a window shorter than 664 px scrolls instead of squeezing the deck further */
+  flex: 1 1 0%; /* fills what is left of the screen under the top bar and any alert banner (see the flex chain below) */
+  min-height: 560px; /* a window shorter than about 650 px scrolls instead of squeezing the deck further */
   margin-top: var(--dk-gap);
 }
 
@@ -381,3 +380,20 @@ html.aeios-force-reduced-motion :is(.dk-scrub__line, .dk-lamp__dot) { animation:
   letter-spacing: 0.04em;
   color: var(--aeios-source-regional);
 }
+
+/* The deck is exactly one screen: the main area is a column the deck fills, however tall the top bar and an alert banner are. */
+.dk-shell:has(.dk-deck) .main-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh / var(--desk-scale, 1)); /* a definite height, so the deck shrinks to fit; a window shorter than the deck's minimum overflows and scrolls */
+}
+
+.dk-shell:has(.dk-deck) :is(.view-stage, .view-stage__frame, .view-stage__content, .dk-deck) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+/* Forced reduced motion (the app's own switch) covers everything the OS setting does. */
+html.aeios-force-reduced-motion :is(.dk-card::before, .dk-stage__shift) { transition: none; }

@@ -18,26 +18,32 @@ export function useCountUp(value: number | null, opts: { duration?: number; digi
   // On first appearance the number counts up from 0 (a decoration of a value that is already current, never of a missing one).
   const start0 = intro && !reduced && valid !== null;
   const [shown, setShown] = useState<number | null>(start0 ? 0 : valid);
-  const last = useRef<number | null>(start0 ? 0 : valid);
+  const target = useRef<number | null>(start0 ? 0 : valid); // the value the last tween was heading to
+  const shownRef = useRef<number | null>(start0 ? 0 : valid); // the number on screen right now
 
   useEffect(() => {
-    if (valid === null || last.current === null || reduced || document.hidden || valid === last.current) {
-      last.current = valid;
-      setShown(valid);
+    const show = (v: number | null) => {
+      shownRef.current = v;
+      setShown(v);
+    };
+    if (valid === null || shownRef.current === null || reduced || document.hidden || valid === target.current) {
+      target.current = valid;
+      show(valid);
       return;
     }
-    const from = last.current;
-    last.current = valid;
+    const from = shownRef.current; // retarget from what is on screen, not from the previous target, so a change mid-count does not jump
+    target.current = valid;
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
       const t = (now - start) / duration;
-      setShown(countFrame(from, valid, t));
+      show(countFrame(from, valid, t));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [valid, reduced, duration]);
 
-  return valid === null || shown === null ? null : text(shown, digits);
+  // `shown ?? valid`: on the first render after null becomes a number there is no frame that says "no reading".
+  return valid === null ? null : text(shown ?? valid, digits);
 }

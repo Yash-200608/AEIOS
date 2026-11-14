@@ -1,24 +1,17 @@
 /*
- * App shell: skip link, menu button and the accessible navigation drawer (Phase 2).
- * Loaded after styles.css so it can override the legacy icon-rail (980 px) and hidden-sidebar (680 px) rules.
- * Desktop layout is unchanged. Tokens only; the few legacy-matching values restore the original sidebar look inside the drawer.
+ * App shell: skip link, focus rings and legacy-section styling on tokens. (The sidebar and its phone drawer were replaced by
+ * the desktop rail in src/shell/shell.css.)
  */
 .skip-link { position: absolute; left: -9999px; top: var(--aeios-space-2); z-index: 100; display: inline-flex; align-items: center; min-height: var(--aeios-target-touch); padding: 0 var(--aeios-space-4); background: var(--aeios-accent); color: var(--aeios-on-accent); font: 600 var(--aeios-text-base) var(--aeios-font-ui); border-radius: var(--aeios-radius-sm); }
 .skip-link:focus { left: var(--aeios-space-4); }
 .main-content:focus { outline: none; }
-.topbar-left { display: flex; align-items: center; gap: var(--aeios-space-3); min-width: 0; }
-.menu-button, .drawer-close { display: none; align-items: center; justify-content: center; min-width: var(--aeios-target-touch); min-height: var(--aeios-target-touch); background: transparent; border: 1.5px solid var(--aeios-border-strong); border-radius: var(--aeios-radius-md); color: var(--aeios-text-primary); cursor: pointer; transition: background-color var(--aeios-dur-micro) var(--aeios-ease); }
-.menu-button:hover, .drawer-close:hover { background: var(--aeios-surface-2); }
-.skip-link:focus-visible, .menu-button:focus-visible, .drawer-close:focus-visible, .sidebar :where(button, a):focus-visible, .topbar :where(button):focus-visible, .main-content :where(a, button, summary, select, input):focus-visible {
+.skip-link:focus-visible, .main-content :where(a, button, summary, select, input):focus-visible {
   outline: 3px solid var(--aeios-focus-ring); outline-offset: 2px;
 }
 .icon-button, .avatar-chip { min-width: var(--aeios-target-touch); min-height: var(--aeios-target-touch); }
 .breadcrumb b { font-size: var(--aeios-text-sm); }
-.timezone-chip, .avatar-chip { font-size: var(--aeios-text-xs); }
 .breadcrumb { font-size: var(--aeios-text-sm); }
 
-@media (min-width: 981px) { .drawer-close { display: none; } }
-@media (max-width: 680px) { .timezone-chip { display: none; } }
 
 /* =====================================================================================================
    Phase 2A: one system from shell to legacy sections. CSS only; layouts and data untouched.
@@ -29,36 +22,16 @@ body { background: var(--aeios-canvas); }
 .app-shell { background: var(--aeios-canvas); font-family: var(--aeios-font-ui); }
 
 /* Sidebar */
-.sidebar { background: var(--aeios-surface-1); border-right: 1px solid var(--aeios-border-subtle); }
 .brand-mark { border: 1px solid var(--aeios-border-strong); background: transparent; box-shadow: none; }
 .brand-mark span { background: var(--aeios-accent); }
 .brand-name { font: 700 var(--aeios-text-base)/1.2 var(--aeios-font-ui); letter-spacing: 0.06em; color: var(--aeios-text-primary); }
 .brand-name span { color: var(--aeios-text-secondary); font-weight: 500; }
 .brand-caption { font: var(--aeios-text-xs)/1.2 var(--aeios-font-ui); letter-spacing: 0.06em; color: var(--aeios-text-tertiary); }
-.side-group-label { font: 600 var(--aeios-text-xs)/1.2 var(--aeios-font-ui); letter-spacing: 0.08em; color: var(--aeios-text-tertiary); }
-.side-nav button { color: var(--aeios-text-secondary); font-size: var(--aeios-text-sm); border-radius: var(--aeios-radius-md); }
-.side-nav button:hover { background: var(--aeios-surface-2); color: var(--aeios-text-primary); }
-.side-nav button.active { color: var(--aeios-text-primary); background: var(--aeios-surface-2); border-color: transparent; box-shadow: inset 3px 0 0 var(--aeios-accent); }
-.side-nav button.active svg { color: var(--aeios-accent); }
-.sidebar-divider { background: var(--aeios-border-subtle); }
-.site-link { color: var(--aeios-text-primary); border-radius: var(--aeios-radius-md); }
-.site-link small { color: var(--aeios-text-secondary); font-size: var(--aeios-text-xs); }
-.site-link b { font-size: var(--aeios-text-sm); }
-.site-link.selected { background: var(--aeios-surface-2); border-color: var(--aeios-border-strong); }
-.sgt-dot, .chandu-dot { box-shadow: none; }
-.node-health-card { background: var(--aeios-surface-2); border: 1px solid var(--aeios-border-subtle); }
-.node-health-head { color: var(--aeios-text-tertiary); font: 600 var(--aeios-text-xs)/1.2 var(--aeios-font-ui); letter-spacing: 0.08em; }
-.node-health-card > b { font-size: var(--aeios-text-sm); }
-.node-health-card > small, .health-foot { color: var(--aeios-text-secondary); font-size: var(--aeios-text-xs); font-family: var(--aeios-font-ui); }
-.health-foot { border-top-color: var(--aeios-border-subtle); }
-.side-footer { color: var(--aeios-text-tertiary); font: var(--aeios-text-xs) var(--aeios-font-mono); }
 
 /* Top bar */
-.topbar { border-bottom: 1px solid var(--aeios-border-subtle); }
 .breadcrumb { color: var(--aeios-text-tertiary); font-family: var(--aeios-font-ui); }
 .breadcrumb i { color: var(--aeios-border-strong); }
 .breadcrumb b { color: var(--aeios-text-primary); font-weight: 600; }
-.timezone-chip { background: transparent; border: 1px solid var(--aeios-border-subtle); color: var(--aeios-text-secondary); font: var(--aeios-text-xs)/1 var(--aeios-font-mono); border-radius: var(--aeios-radius-sm); padding: 8px 10px; }
 .icon-button { background: transparent; border: 1px solid var(--aeios-border-strong); color: var(--aeios-text-secondary); border-radius: var(--aeios-radius-md); }
 .icon-button:hover { color: var(--aeios-text-primary); border-color: var(--aeios-text-tertiary); background: var(--aeios-surface-2); }
 .avatar-chip { background: var(--aeios-surface-2); border: 1px solid var(--aeios-border-strong); color: var(--aeios-text-primary); font: 600 var(--aeios-text-sm) var(--aeios-font-ui); border-radius: var(--aeios-radius-md); }
@@ -84,7 +57,5 @@ body { background: var(--aeios-canvas); }
 }
 .main-content .primary-button { background: var(--aeios-accent); color: var(--aeios-on-accent); box-shadow: none; border-color: var(--aeios-accent); }
 /* The legacy "transition: all" also animated the focus outline in from 0 px; transition only colours and surfaces */
-.side-nav button, .site-link { transition-property: background-color, color, border-color, box-shadow; }
 /* The sticky full-height sidebar had no scroll of its own, so its lower items (sites, edge-node note) were unreachable
    on short screens and could not be brought into view when focused. */
-@media (min-width: 981px) { .sidebar { overflow-y: auto; overscroll-behavior: contain; } }

@@ -30,16 +30,18 @@ export default function OutlookScrubber({ rows, poorAt, selected, disabled, onSe
     const top = Math.max(poorAt * 1.6, ...vals, 1);
     const y = (v: number) => H - (Math.min(v, top) / top) * (H - 6) - 2;
     const x = (i: number) => (rows.length <= 1 ? 0 : (i / (rows.length - 1)) * W);
-    let l = '';
-    let a = '';
+    const runs: Array<Array<[number, number]>> = [];
     let open = false;
     rows.forEach((r, i) => {
       if (r.vc === null || !Number.isFinite(r.vc)) { open = false; return; }
-      l += `${open ? 'L' : 'M'}${x(i).toFixed(1)} ${y(r.vc).toFixed(1)} `;
-      a += `${open ? 'L' : 'M'}${x(i).toFixed(1)} ${y(r.vc).toFixed(1)} `;
-      open = true;
+      if (!open) { runs.push([]); open = true; }
+      runs[runs.length - 1].push([x(i), y(r.vc)]);
     });
-    return { line: l.trim(), area: a ? `${l.trim()} L${x(rows.length - 1).toFixed(1)} ${H} L0 ${H} Z` : '', limitY: y(poorAt) };
+    const pt = (p: [number, number]) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    const l = runs.map((run) => `M${run.map(pt).join(' L')}`).join(' ');
+    // Each run of hours with data is closed down to the baseline on its own, so a gap in the data is a gap in the fill.
+    const a = runs.map((run) => `M${run[0][0].toFixed(1)} ${H} L${run.map(pt).join(' L')} L${run[run.length - 1][0].toFixed(1)} ${H} Z`).join(' ');
+    return { line: l, area: a, limitY: y(poorAt) };
   }, [rows, poorAt]);
 
   const pick = (clientX: number) => {

@@ -4,6 +4,7 @@ import '../components/overview/overview.css';
 import AtmosphericColumn from '../components/overview/AtmosphericColumn';
 import { istTime } from '../components/overview/format';
 import { verdictView } from '../components/overview/model';
+import { bootSeen, shouldBoot } from './boot';
 import { nearestHourIndex } from './hours';
 import { VENTILATION_POOR, ventilation } from '../lib/derived';
 import { useMotionPolicy } from '../motion/useMotionPolicy';
@@ -19,7 +20,7 @@ import { fixed, useOverviewModel, type OverviewProps } from './useOverviewModel'
 import './deck.css';
 
 const WINDOW_HOURS = 48;
-const BOOT_FAILSAFE_MS = 4000; // the panels never stay hidden if the globe chunk is slow or the boot never reports
+const BOOT_FAILSAFE_MS = 6000; // longer than the globe's 4.3 s fly-in; the panels never stay hidden if the chunk is slow or the boot never reports
 
 const EMPTY_COLUMN = {
   blh: null,
@@ -35,7 +36,7 @@ const EMPTY_COLUMN = {
 export default function CommandDeck({ overview, onSelectHour }: { overview: OverviewProps; onSelectHour: (hourIndex: number) => void }) {
   const model = useOverviewModel(overview);
   const { reduced } = useMotionPolicy();
-  const [booted, setBooted] = useState(reduced);
+  const [booted, setBooted] = useState(() => !shouldBoot(bootSeen(), reduced)); // no boot to wait for: panels are there at once
   useEffect(() => {
     if (booted) return;
     const timer = window.setTimeout(() => setBooted(true), BOOT_FAILSAFE_MS);
