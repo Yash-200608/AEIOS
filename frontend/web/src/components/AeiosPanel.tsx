@@ -29,7 +29,7 @@ export default function AeiosPanel() {
       {warming && data && (
         <div className="state-box state-warm" role="status">
           <AlertTriangle size={14} />
-          <span><b>Local model warming up.</b> {data.totalPackets.toLocaleString('en-IN')} real packets stored; it needs about a week (~{MODEL_MATURE_PACKETS.toLocaleString('en-IN')}) before its forecasts mean anything. Until then the prediction table is "same as now", not a validated forecast. Earlier synthetic-data skill figures only show the pipeline works, not accuracy on real air.</span>
+          <span><b>Local model warming up.</b> {data.totalPackets.toLocaleString('en-IN')} real packets stored; the table below is the Pi's own online model. It starts from "same as now" and improves with every packet, so it stays greyed out and unvalidated until {MODEL_MATURE_PACKETS.toLocaleString('en-IN')} packets and stays rough well beyond that. Earlier synthetic-data skill figures only show the pipeline works, not accuracy on real air.</span>
         </div>
       )}
       <div className="aeios-grid">
