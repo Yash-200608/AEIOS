@@ -4,8 +4,10 @@ import { api, type AeiosOverview } from './api';
 // "Connected" is not "current": gateway link, node packets and local-model maturity are three separate states.
 export const GATEWAY_ONLINE_MS = 120_000;
 export const NODE_STALE_MS = 30 * 60_000;
-// The local model learns online and needs roughly a week of real packets. At the nominal one packet per minute that is ~10,000.
-export const MODEL_MATURE_PACKETS = 10_000;
+// The local model learns online. A week of packets (~10,000 at one per minute) would give a trustworthy forecast;
+// the gate is deliberately lowered to 100 so predictions show early, accepting lower accuracy. Nodes report every 300 s
+// (csv_v0 sampling_interval_s), so 100 packets is roughly 8 h from one node, less when several nodes report.
+export const MODEL_MATURE_PACKETS = 100;
 
 export function ago(iso?: string | null): string {
   if (!iso) return 'never';
