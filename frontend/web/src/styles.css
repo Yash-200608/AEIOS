@@ -579,3 +579,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tw-play:disabled { opacity: .5; }
 .tw-time { font: 11px var(--mono); color: var(--text-soft); white-space: nowrap; }
 @media (max-width: 900px) { .tw-layout { grid-template-columns: 1fr; } .tw-stage { min-height: 440px; } .tw-time { white-space: normal; } }
+
+/* AEIOS model page: larger, easier-to-read sensor and forecast values (scoped so other pages are unchanged) */
+#aeios .aeios-grid { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+#aeios .panel-title { font-size: 18px; }
+#aeios .panel-subtitle { font-size: 14px; line-height: 1.5; }
+#aeios .status-chip { font-size: 12px; white-space: normal; }
+#aeios .fresh-badge { font-size: 12px; }
+#aeios .last-packet { font-size: 15px; }
+#aeios .telemetry-row { font-size: 16px; line-height: 1.35; gap: 10px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; color: #d8cfe2; }
+#aeios .telemetry-row b { font-size: 15px; }
+#aeios .pred-head { font-size: 15px; }
+#aeios .aeios-table { font-size: 17px; }
+#aeios .aeios-table th { font-size: 14px; }
+#aeios .aeios-table td { padding: 9px 4px; }
+#aeios .aeios-table small { font-size: 13px; }
+#aeios .state-box { font-size: 14.5px; }
+@media (max-width: 560px) { #aeios .aeios-grid { grid-template-columns: 1fr; } #aeios .telemetry-row { font-size: 15px; } }
