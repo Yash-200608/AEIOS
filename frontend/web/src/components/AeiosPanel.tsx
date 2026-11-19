@@ -1,6 +1,10 @@
 import { AlertTriangle, Clock } from 'lucide-react';
 import { round } from '../lib/api';
-import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeFreshness, useAeios } from '../lib/freshness';
+import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, NODE_STALE_MS, nodeAqi, nodeFreshness, useAeios } from '../lib/freshness';
+import { aqiBasis, checkPm, PM_REJECT_TEXT } from '../lib/pmQuality';
+
+/** A forecast is only shown as current while it is younger than the node staleness limit; older ones are from a past run. */
+const currentForecast = (madeUtc: unknown) => Date.now() - Date.parse(String(madeUtc)) <= NODE_STALE_MS;
 
 const TARGET_LABEL: Record<string, string> = { pm2_5: 'PM2.5', pm10: 'PM10' };
 const HORIZONS = [5, 15, 30];
@@ -37,6 +41,11 @@ export default function AeiosPanel() {
           const last = data!.latest.find((l) => l.node === node);
           const fresh = nodeFreshness(last?.rx_utc);
           const stale = fresh !== 'fresh';
+          const pm = last ? checkPm(last) : null; // a rejected PM reading is shown as "—" with the reason, never as a value
+          const aqi = nodeAqi(data, node);
+          const nodePreds = data!.predictions.filter((x) => x.node === node);
+          const lastForecast = nodePreds.reduce<string | null>((a, x) => (a === null || String(x.made_utc) > a ? String(x.made_utc) : a), null);
+          const forecastOld = lastForecast !== null && !currentForecast(lastForecast);
           return (
             <div className={`panel node-card ${stale ? 'node-stale' : ''}`} key={node}>
               <div className="panel-header">
@@ -48,10 +57,19 @@ export default function AeiosPanel() {
               {last && (
                 <div className="telemetry-row" style={{ marginTop: 10 }}>
                   <span>Temp {round(last.temp, 1)}°C</span><span>RH {round(last.rh, 0)}%</span><span>Pressure {round(last.pressure, 0)} hPa</span>
-                  <span>PM2.5 {last.pm2_5 >= 0 ? round(last.pm2_5, 0) : '—'} µg/m³</span>
-                  <span>PM10 {last.pm10 >= 0 ? round(last.pm10, 0) : '—'} µg/m³</span>
+                  <span>PM2.5 {pm?.ok ? round(pm.pm25, 0) : '—'} µg/m³</span>
+                  <span>PM10 {pm?.ok ? round(pm.pm10, 0) : '—'} µg/m³</span>
                   <span>MQ135 {round(last.mq_mv, 0)} mV</span>
-                  <span>RSSI {round(last.rssi, 0)} dBm</span><span>SNR {round(last.snr, 1)} dB</span><span>GPS {last.fix ? 'FIX' : 'NO FIX'}</span>
+                  {/* the firmware sends fix = -1 when there is no GPS; only a positive value is a fix */}
+                  <span>RSSI {round(last.rssi, 0)} dBm</span><span>SNR {round(last.snr, 1)} dB</span><span>GPS {Number(last.fix) > 0 ? 'FIX' : 'NO FIX'}</span>
+                </div>
+              )}
+              {pm && !pm.ok && <div className="pm-reject" role="note"><AlertTriangle size={13} /> PM reading rejected: {PM_REJECT_TEXT[pm.reason]}.</div>}
+              {aqi && (
+                <div className="node-aqi" data-aqi-local={aqi.aqi === null ? 'none' : 'value'}>
+                  <div><span className="node-aqi__label">Local AQI · indicative, US scale</span>
+                    {aqi.aqi === null ? <b className="node-aqi__none">not available</b> : <b>{aqi.aqi} <small>{aqi.category} · {aqi.dominant}</small></b>}</div>
+                  <span className="node-aqi__basis">{aqiBasis(aqi)}</span>
                 </div>
               )}
               <div className="pred-head">
@@ -64,12 +82,14 @@ export default function AeiosPanel() {
                   {(['pm2_5', 'pm10'] as const).map((t) => (
                     <tr key={t}><td>{TARGET_LABEL[t]}</td>
                       {HORIZONS.map((h) => {
-                        const p = data!.predictions.find((x) => x.node === node && x.target === t && x.horizon_min === h);
+                        const found = nodePreds.find((x) => x.target === t && x.horizon_min === h);
+                        const p = found && currentForecast(found.made_utc) ? found : undefined; // an old run is not a current forecast
                         return <td key={h}>{p ? <>{round(p.p50, 0)}{p.p10 !== null && p.p90 !== null ? <small> ({round(p.p10, 0)}–{round(p.p90, 0)})</small> : null}</> : '—'}</td>;
                       })}</tr>
                   ))}
                 </tbody>
               </table>
+              {forecastOld && <div className="pm-reject" role="note"><Clock size={13} /> No current forecast: the last one was made {ago(lastForecast)}{pm && !pm.ok ? ', because the model needs valid PM readings to forecast' : ''}.</div>}
               <div className="panel-subtitle">µg/m³, median with 80% band · {data!.totalPackets.toLocaleString('en-IN')} real packets stored · <span className="source-badge">AEIOS_MODEL_PREDICTION</span></div>
             </div>
           );

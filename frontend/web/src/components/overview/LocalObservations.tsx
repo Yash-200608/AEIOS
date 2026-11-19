@@ -2,6 +2,7 @@ import { Clock } from 'lucide-react';
 import { Readout, SourceLabel, type OperationalState } from '../../design/primitives';
 import MorphStateLabel from '../../motion/MorphStateLabel';
 import type { ObservationState, PacketValues } from './model';
+import { aqiBasis, type LocalAqi } from '../../lib/pmQuality';
 
 // 'no-reading' means a fresh packet whose particulate sensor sent no value: the node itself is current.
 const NODE_STATE: Record<ObservationState, OperationalState> = { valid: 'fresh', 'no-reading': 'fresh', stale: 'stale', 'no-packet': 'nodata' };
@@ -15,14 +16,18 @@ function Row({ label, value, unit, why, note }: { label: string; value: string |
   );
 }
 
-export default function LocalObservations({ loaded, failed, state, node, headline, values, last, packetAgo }: {
+export default function LocalObservations({ loaded, failed, state, node, headline, values, last, packetAgo, pmWhy, aqi }: {
   loaded: boolean; failed: boolean; state: ObservationState; node?: string; headline: { title: string; detail: string };
   values: PacketValues; last: PacketValues | null; packetAgo: string;
+  /** Why the latest PM reading was rejected by the quality check, when it was. */
+  pmWhy?: string | null;
+  /** Indicative AQI from the node's filtered PM readings over the last hour. */
+  aqi?: LocalAqi | null;
 }) {
   const fresh = state === 'valid' || state === 'no-reading'; // only a fresh packet supplies current values
   const cur = (v: number | null, digits = 0) => (fresh && v !== null ? (digits ? v.toFixed(digits) : String(Math.round(v))) : null);
   const pm = (v: number | null) => (state === 'valid' ? cur(v) : null);
-  const why = failed ? 'Gateway data unavailable.' : state === 'stale' ? 'Not current: the node has not transmitted recently.' : state === 'no-packet' ? 'No packet received.' : 'The particulate sensor sent no value.';
+  const why = failed ? 'Gateway data unavailable.' : state === 'stale' ? 'Not current: the node has not transmitted recently.' : state === 'no-packet' ? 'No packet received.' : pmWhy ?? 'The particulate sensor sent no value.';
   return (
     <section className="cc-obs" aria-labelledby="cc-obs-h" aria-busy={!loaded}>
       <div className="cc-head">
@@ -35,7 +40,11 @@ export default function LocalObservations({ loaded, failed, state, node, headlin
       {loaded && <p className="cc-p">{headline.detail}</p>}
       <div className="cc-lead"><Readout label="PM2.5" value={pm(values.pm25)} unit="µg/m³" missing={why} note="Particulate matter measured at the node." /></div>
       <dl className="cc-obsrows" aria-label="Other local measurements">
-        <Row label="PM10" value={pm(values.pm10)} unit="µg/m³" why={failed ? 'Gateway data unavailable.' : fresh ? 'The sensor sent no value.' : 'Not current.'} />
+        <Row label="PM10" value={pm(values.pm10)} unit="µg/m³" why={failed ? 'Gateway data unavailable.' : fresh ? (pmWhy ?? 'The sensor sent no value.') : 'Not current.'} />
+        {aqi && !failed && (
+          <Row label="Local AQI" value={aqi.aqi === null ? null : String(aqi.aqi)} unit={aqi.aqi === null ? '' : `${aqi.category} · ${aqi.dominant}`}
+            why={aqiBasis(aqi)} note={`Indicative, US scale. ${aqi.aqi === null ? '' : aqiBasis(aqi)}`} />
+        )}
         <Row label="Temperature" value={cur(values.temp, 1)} unit="°C" why="Not current." />
         <Row label="Humidity" value={cur(values.rh)} unit="%" why="Not current." />
         <Row label="Pressure" value={cur(values.pressure)} unit="hPa" why="Not current." />

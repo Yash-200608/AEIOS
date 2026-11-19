@@ -20,7 +20,7 @@ export type { OverviewProps };
 /** The Briefing: the evidence behind the command deck's headline. Every value comes from useOverviewModel. */
 export default function Overview(p: OverviewProps) {
   const {
-    loadState, loaded, failed, reading, observation, packetAgo, values, headline, stationState, cls, evidence, limits, health,
+    loadState, loaded, failed, reading, observation, packetAgo, values, pmWhy, localAqi, headline, stationState, cls, evidence, limits, health,
     outcome, outlookRows, column, feeds, feed, aqiNumber, modelHour, vc, wind, inv, fixtureName,
   } = useOverviewModel(p);
 
@@ -48,7 +48,7 @@ export default function Overview(p: OverviewProps) {
             />
           </RevealGroup>
           <RevealGroup group="evidence" className="cc-band__side">
-            <LocalObservations loaded={loaded} failed={failed} state={observation} node={reading.node} headline={headline} values={values} last={reading.packet ? values : null} packetAgo={packetAgo} />
+            <LocalObservations loaded={loaded} failed={failed} state={observation} node={reading.node} headline={headline} values={values} last={reading.packet ? values : null} packetAgo={packetAgo} pmWhy={pmWhy} aqi={localAqi} />
           </RevealGroup>
         </div>
         <SystemRail feeds={feeds} rows={health} onNavigate={p.onNavigate} />

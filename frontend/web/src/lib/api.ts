@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { runScenario } from './sim';
+import { checkPm } from './pmQuality';
 
 export type SiteId = 'sgt' | 'chandu';
 export type Site = {
@@ -118,6 +119,8 @@ export type AeiosOverview = {
   gateway: { device_id: string; last_seen: string } | null;
   nodes: Array<{ node: string; site_id: string | null; label: string | null }>;
   latest: Array<Record<string, any>>;
+  /** Most recent packets from all nodes (newest first), for the local AQI window. Optional so fixtures without it still load. */
+  recent?: Array<Record<string, any>>;
   predictions: Array<Record<string, any>>;
   anomalies: Array<Record<string, any>>;
   totalPackets: number;
@@ -160,7 +163,9 @@ export const api = {
     const { data, error } = await supabase.from('packets').select('*').in('node', ids).order('rx_utc', { ascending: false }).limit(24);
     if (error) throw new Error(error.message);
     if (!data?.length) return waiting('An empty response means no live station packet has been ingested; model data is not substituted.');
-    const observations = data.map((p) => ({
+    const observations = data.map((p) => {
+      const pm = checkPm(p); // a rejected PM reading (no frame, out of range, PM2.5 > PM10) is shown as no reading
+      return {
       id: p.id,
       observed_at: p.rx_utc,
       station_code: `${p.node}`,
@@ -168,12 +173,13 @@ export const api = {
       humidity_pct: p.rh,
       pressure_hpa: p.pressure,
       bme680_gas_resistance_ohm: p.gas_kohm === null ? null : p.gas_kohm * 1000,
-      pm1_ugm3: clean(p.pm1),
-      pm25_ugm3: clean(p.pm2_5),
-      pm10_ugm3: clean(p.pm10),
+      pm1_ugm3: pm.ok ? clean(p.pm1) : null,
+      pm25_ugm3: pm.ok ? pm.pm25 : null,
+      pm10_ugm3: pm.ok ? pm.pm10 : null,
       mq135_mv: p.mq_mv,
       gps_fix: !!p.fix,
-    }));
+    };
+    });
     return { status: 'LIVE', count: observations.length, observations, note: 'Real LoRa packets relayed by the gateway.' };
   },
 
@@ -192,7 +198,8 @@ export const api = {
     const [gw, nodes, packets, preds, anoms, count] = await Promise.all([
       supabase.from('gateway_status').select('device_id,last_seen').order('last_seen', { ascending: false }).limit(1),
       supabase.from('nodes').select('node,site_id,label').order('node'),
-      supabase.from('packets').select('*').order('rx_utc', { ascending: false }).limit(60),
+      // 120 newest packets: at the normal 5-minute period that is over an hour from each of several nodes (the AQI window).
+      supabase.from('packets').select('*').order('rx_utc', { ascending: false }).limit(120),
       supabase.from('predictions').select('*').order('made_utc', { ascending: false }).limit(240),
       supabase.from('anomalies').select('*').order('utc', { ascending: false }).limit(12),
       supabase.from('packets').select('id', { count: 'exact', head: true }),
@@ -211,6 +218,7 @@ export const api = {
       gateway: gw.data?.[0] || null,
       nodes: nodes.data || [],
       latest: Object.values(latest),
+      recent: packets.data || [],
       predictions,
       anomalies: anoms.data || [],
       totalPackets: count.count || 0,

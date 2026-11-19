@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, type AeiosOverview } from './api';
+import { checkPm, localAqi, type LocalAqi } from './pmQuality';
 
 // "Connected" is not "current": gateway link, node packets and local-model maturity are three separate states.
 export const GATEWAY_ONLINE_MS = 120_000;
@@ -33,12 +34,22 @@ export function modelWarmingUp(data: AeiosOverview | null): boolean {
   return (data?.totalPackets ?? 0) < MODEL_MATURE_PACKETS;
 }
 
-/** Newest node packet for a site, with its freshness. PM2.5 below zero is the node's "no reading" marker. */
+/**
+ * Newest node packet for a site, with its freshness. Its PM is only used when it passes checkPm (no "-1" no-frame marker,
+ * within the sensor range, PM2.5 ≤ PM10); otherwise pm25 is null and pmCheck says why.
+ */
 export function siteReading(data: AeiosOverview | null, site: string) {
   const node = data?.nodes.find((n) => n.site_id === site)?.node;
   const packet = node ? data?.latest.find((l) => l.node === node) : undefined;
-  const pm25 = packet && Number.isFinite(Number(packet.pm2_5)) && Number(packet.pm2_5) >= 0 ? Number(packet.pm2_5) : null;
-  return { node, packet, pm25, freshness: nodeFreshness(packet?.rx_utc) };
+  const pmCheck = packet ? checkPm(packet) : null;
+  const pm25 = pmCheck?.ok ? pmCheck.pm25 : null;
+  return { node, packet, pm25, pmCheck, freshness: nodeFreshness(packet?.rx_utc) };
+}
+
+/** Indicative local AQI for a node from the last hour of its packets (filtered). Null when there is no node. */
+export function nodeAqi(data: AeiosOverview | null, node: string | undefined, nowMs = Date.now()): LocalAqi | null {
+  if (!data || !node) return null;
+  return localAqi(data.recent ?? data.latest, node, nowMs);
 }
 
 // One shared poll for every consumer (status hero, sensor panel, alert panel).

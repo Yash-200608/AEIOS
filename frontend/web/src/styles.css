@@ -595,4 +595,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #aeios .aeios-table td { padding: 9px 4px; }
 #aeios .aeios-table small { font-size: 13px; }
 #aeios .state-box { font-size: 14.5px; }
+/* AEIOS model page: rejected-reading notes and the indicative local AQI */
+#aeios .pm-reject { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13.5px; color: #f0b45a; }
+#aeios .node-aqi { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: rgba(5, 5, 5, .25); display: grid; gap: 4px; }
+#aeios .node-aqi > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+#aeios .node-aqi__label { font-size: 13px; color: var(--muted-2); letter-spacing: .02em; }
+#aeios .node-aqi b { font: 600 22px var(--mono); color: #e4dfe9; }
+#aeios .node-aqi b small { font: 13px var(--mono); color: var(--muted-2); margin-left: 4px; }
+#aeios .node-aqi b.node-aqi__none { font-size: 15px; color: var(--muted-2); }
+#aeios .node-aqi__basis { font-size: 12.5px; color: var(--muted-2); line-height: 1.4; }
 @media (max-width: 560px) { #aeios .aeios-grid { grid-template-columns: 1fr; } #aeios .telemetry-row { font-size: 15px; } }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { OperationalState } from '../design/primitives';
 import { compass, numeric, type WeatherPayload } from '../lib/api';
 import { CALM_WIND_KMH, dispersionClass, inversion, meanLowWind, ventilation, VENTILATION_POOR } from '../lib/derived';
-import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeFreshness, siteReading, useAeios } from '../lib/freshness';
+import { ago, gatewayOnline, MODEL_MATURE_PACKETS, modelWarmingUp, nodeAqi, nodeFreshness, siteReading, useAeios } from '../lib/freshness';
+import { PM_REJECT_TEXT } from '../lib/pmQuality';
 import { useAlerts } from '../components/SmokeAlerts';
 import type { FeedCell } from '../components/overview/SystemRail';
 import { istTime, localSlot } from '../components/overview/format';
@@ -63,11 +64,19 @@ export function useOverviewModel(p: OverviewProps) {
   const observation = observationState({ hasPacket: Boolean(reading.packet), freshness: reading.freshness, pm25: reading.pm25 });
   const packetRx = reading.packet ? String(reading.packet.rx_utc) : null;
   const packetAgo = packetRx ? ago(packetRx) : 'never';
-  const values = packetValues(reading.packet);
+  // A PM reading that fails the quality check (lib/pmQuality) is never shown as a measurement.
+  const pmReject = reading.pmCheck && !reading.pmCheck.ok ? reading.pmCheck.reason : null;
+  const rawValues = packetValues(reading.packet);
+  const values = pmReject ? { ...rawValues, pm25: null, pm10: null } : rawValues;
+  const pmWhy = pmReject ? `Rejected: ${PM_REJECT_TEXT[pmReject]}.` : null;
   const failed = aeios.error !== '' && data === null; // the gateway data could not be loaded: readings are unknown, not absent
   const headline = failed
     ? { title: 'Local data unavailable', detail: 'The gateway data could not be loaded, so local readings are unknown. This is not the same as no reading.' }
-    : observationHeadline(observation, reading.node, packetAgo);
+    : observation === 'no-reading' && pmReject && pmReject !== 'no-frame'
+      ? { title: 'PM reading rejected', detail: `Node ${reading.node} reported ${packetAgo}, but its PM reading failed the quality check: ${PM_REJECT_TEXT[pmReject]}.` }
+      : observationHeadline(observation, reading.node, packetAgo);
+  // Indicative AQI from the last hour of this site's node, after filtering. Re-derived on the 30 s tick as the window moves.
+  const localAqi = useMemo(() => (failed ? null : nodeAqi(data, reading.node)), [data, reading.node, failed, tick]);
   const stationState: OperationalState = !loaded ? 'checking' : failed ? 'unavailable' : observation === 'stale' ? 'stale' : observation === 'no-packet' ? 'nodata' : 'fresh';
 
   // --- assessment (existing derived.ts calculations; no formula here) ---
@@ -130,7 +139,7 @@ export function useOverviewModel(p: OverviewProps) {
   const modelHour = p.selectedTime ? localSlot(p.selectedTime) : '—';
 
   return {
-    loadState, loaded, failed, reading, observation, packetAgo, values, headline, stationState, cls, evidence, limits, health,
+    loadState, loaded, failed, reading, observation, packetAgo, values, pmWhy, localAqi, headline, stationState, cls, evidence, limits, health,
     outcome, outlookRows, column, feeds, feed, aqiNumber, modelHour, vc, wind, inv, fixtureName,
   };
 }

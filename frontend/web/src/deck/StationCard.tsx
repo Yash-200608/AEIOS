@@ -2,6 +2,20 @@ import { StateLabel } from '../design/primitives';
 import DeckCard from './DeckCard';
 import { useCountUp } from './useCountUp';
 import type { OverviewModel } from './useOverviewModel';
+import { aqiBasis, type LocalAqi } from '../lib/pmQuality';
+
+/* Indicative AQI from the node's own filtered PM readings (last hour). Says how many readings were used and rejected. */
+function LocalAqiLine({ aqi }: { aqi: LocalAqi }) {
+  return (
+    <div className="dk-aqi-local" data-aqi-local={aqi.aqi === null ? 'none' : 'value'}>
+      <span className="dk-stat__label">Local AQI · indicative, US scale</span>
+      {aqi.aqi === null
+        ? <span className="dk-stat__value dk-stat__value--none">not available</span>
+        : <span className="dk-stat__value"><span className="ax-num">{aqi.aqi}</span><small>{aqi.category} · {aqi.dominant}</small></span>}
+      <p>{aqiBasis(aqi)}</p>
+    </div>
+  );
+}
 
 function Stat({ label, value, unit, digits = 0 }: { label: string; value: number | null; unit: string; digits?: number }) {
   const text = useCountUp(value, { digits });
@@ -41,6 +55,7 @@ export default function StationCard({ model }: { model: OverviewModel }) {
           <p>{model.headline.detail}</p>
         </div>
       )}
+      {model.loaded && !model.failed && model.localAqi && <LocalAqiLine aqi={model.localAqi} />}
     </DeckCard>
   );
 }
