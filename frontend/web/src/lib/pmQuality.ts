@@ -90,6 +90,10 @@ export type LocalAqi = {
   total: number;       // packets from this node in the window
   rejected: RejectCounts;
   windowMin: number;
+  /** Time of the node's newest packet: the window is the hour before it. Null when the node has no packets. */
+  asOf: string | null;
+  /** True while that newest packet is younger than the staleness limit. A silent node keeps its last AQI with current=false. */
+  current: boolean;
   /** Why there is no AQI, when there is none. */
   reason: 'no-packets' | 'too-few-valid' | null;
 };
@@ -99,9 +103,21 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
-export function localAqi(packets: Array<Record<string, unknown>>, node: string, nowMs: number, windowMin = AQI_WINDOW_MIN): LocalAqi {
-  const from = nowMs - windowMin * 60_000;
-  const mine = packets.filter((p) => String(p.node) === node && Number.isFinite(Date.parse(String(p.rx_utc))) && Date.parse(String(p.rx_utc)) >= from);
+/** Same 30 min limit as the node freshness badge (lib/freshness NODE_STALE_MS); duplicated so this module stays import-free. */
+export const AQI_STALE_MS = 30 * 60_000;
+
+/**
+ * The window is the hour ending at the node's newest packet, not at "now". While the node is sending that is the last hour;
+ * when it goes silent the last AQI it supported is kept and marked current=false with asOf, instead of disappearing.
+ */
+export function localAqi(packets: Array<Record<string, unknown>>, node: string, nowMs: number, windowMin = AQI_WINDOW_MIN, staleMs = AQI_STALE_MS): LocalAqi {
+  const t = (p: Record<string, unknown>) => Date.parse(String(p.rx_utc));
+  const all = packets.filter((p) => String(p.node) === node && Number.isFinite(t(p)) && t(p) <= nowMs);
+  const anchor = all.reduce((a, p) => Math.max(a, t(p)), -Infinity);
+  const asOf = Number.isFinite(anchor) ? new Date(anchor).toISOString() : null;
+  const current = asOf !== null && nowMs - anchor <= staleMs;
+  const from = anchor - windowMin * 60_000;
+  const mine = all.filter((p) => t(p) >= from);
   const rejected: RejectCounts = { 'no-frame': 0, 'out-of-range': 0, inconsistent: 0, spike: 0 };
   let valid: Array<{ pm25: number; pm10: number }> = [];
   for (const p of mine) {
@@ -115,7 +131,7 @@ export function localAqi(packets: Array<Record<string, unknown>>, node: string, 
     rejected.spike += valid.length - kept.length;
     valid = kept;
   }
-  const base = { rejected, total: mine.length, used: valid.length, windowMin };
+  const base = { rejected, total: mine.length, used: valid.length, windowMin, asOf, current };
   if (!mine.length) return { ...base, aqi: null, category: null, dominant: null, pm25: null, pm10: null, reason: 'no-packets' };
   if (valid.length < AQI_MIN_VALID) return { ...base, aqi: null, category: null, dominant: null, pm25: null, pm10: null, reason: 'too-few-valid' };
   const pm25 = median(valid.map((v) => v.pm25)), pm10 = median(valid.map((v) => v.pm10));
@@ -130,7 +146,8 @@ const REJECT_SHORT: Record<PmReject, string> = { 'no-frame': 'no sensor data', '
 export function aqiBasis(a: LocalAqi): string {
   const parts = (Object.keys(a.rejected) as PmReject[]).filter((k) => a.rejected[k] > 0).map((k) => `${a.rejected[k]} ${REJECT_SHORT[k]}`);
   const rej = parts.length ? `; rejected ${parts.join(', ')}` : '; none rejected';
-  if (a.reason === 'no-packets') return `No packets from this node in the last ${a.windowMin} min.`;
-  if (a.reason === 'too-few-valid') return `Only ${a.used} valid PM reading${a.used === 1 ? '' : 's'} of ${a.total} in the last ${a.windowMin} min (needs ${AQI_MIN_VALID})${rej}.`;
-  return `Median of ${a.used} valid reading${a.used === 1 ? '' : 's'} of ${a.total}, last ${a.windowMin} min${rej}.`;
+  const span = a.current ? `the last ${a.windowMin} min` : `the ${a.windowMin} min before its last packet`;
+  if (a.reason === 'no-packets') return 'No packets from this node yet.';
+  if (a.reason === 'too-few-valid') return `Only ${a.used} valid PM reading${a.used === 1 ? '' : 's'} of ${a.total} in ${span} (needs ${AQI_MIN_VALID})${rej}.`;
+  return `Median of ${a.used} valid reading${a.used === 1 ? '' : 's'} of ${a.total} in ${span}${rej}.`;
 }

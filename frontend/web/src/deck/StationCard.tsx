@@ -3,12 +3,13 @@ import DeckCard from './DeckCard';
 import { useCountUp } from './useCountUp';
 import type { OverviewModel } from './useOverviewModel';
 import { aqiBasis, type LocalAqi } from '../lib/pmQuality';
+import { ago } from '../lib/freshness';
 
 /* Indicative AQI from the node's own filtered PM readings (last hour). Says how many readings were used and rejected. */
 function LocalAqiLine({ aqi }: { aqi: LocalAqi }) {
   return (
-    <div className="dk-aqi-local" data-aqi-local={aqi.aqi === null ? 'none' : 'value'}>
-      <span className="dk-stat__label">Local AQI · indicative, US scale</span>
+    <div className="dk-aqi-local" data-aqi-local={aqi.aqi === null ? 'none' : 'value'} data-aqi-current={aqi.current}>
+      <span className="dk-stat__label">{aqi.current ? 'Local AQI · indicative, US scale' : `Last local AQI · not current, measured ${ago(aqi.asOf)}`}</span>
       {aqi.aqi === null
         ? <span className="dk-stat__value dk-stat__value--none">not available</span>
         : <span className="dk-stat__value"><span className="ax-num">{aqi.aqi}</span><small>{aqi.category} · {aqi.dominant}</small></span>}

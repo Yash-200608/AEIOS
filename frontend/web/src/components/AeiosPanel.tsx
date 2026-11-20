@@ -66,8 +66,8 @@ export default function AeiosPanel() {
               )}
               {pm && !pm.ok && <div className="pm-reject" role="note"><AlertTriangle size={13} /> PM reading rejected: {PM_REJECT_TEXT[pm.reason]}.</div>}
               {aqi && (
-                <div className="node-aqi" data-aqi-local={aqi.aqi === null ? 'none' : 'value'}>
-                  <div><span className="node-aqi__label">Local AQI · indicative, US scale</span>
+                <div className="node-aqi" data-aqi-local={aqi.aqi === null ? 'none' : 'value'} data-aqi-current={aqi.current}>
+                  <div><span className="node-aqi__label">{aqi.current ? 'Local AQI · indicative, US scale' : `Last local AQI · not current, measured ${ago(aqi.asOf)}`}</span>
                     {aqi.aqi === null ? <b className="node-aqi__none">not available</b> : <b>{aqi.aqi} <small>{aqi.category} · {aqi.dominant}</small></b>}</div>
                   <span className="node-aqi__basis">{aqiBasis(aqi)}</span>
                 </div>

@@ -604,4 +604,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #aeios .node-aqi b small { font: 13px var(--mono); color: var(--muted-2); margin-left: 4px; }
 #aeios .node-aqi b.node-aqi__none { font-size: 15px; color: var(--muted-2); }
 #aeios .node-aqi__basis { font-size: 12.5px; color: var(--muted-2); line-height: 1.4; }
+#aeios .node-aqi[data-aqi-current="false"] b { opacity: .6; } /* an old AQI is shown, but never looks current */
+#aeios .node-aqi[data-aqi-current="false"] .node-aqi__label { color: #f0b45a; }
 @media (max-width: 560px) { #aeios .aeios-grid { grid-template-columns: 1fr; } #aeios .telemetry-row { font-size: 15px; } }

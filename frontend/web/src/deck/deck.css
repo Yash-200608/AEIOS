@@ -282,6 +282,7 @@
 .dk-station__none p { margin: var(--aeios-space-1) 0 0; font-size: var(--aeios-text-sm); line-height: 1.45; color: var(--aeios-text-secondary); }
 .dk-aqi-local { display: grid; gap: 2px; margin-top: var(--aeios-space-3); padding-top: var(--aeios-space-3); border-top: 1px solid var(--aeios-border-subtle, rgba(255, 255, 255, .08)); }
 .dk-aqi-local p { margin: 2px 0 0; font-size: var(--aeios-text-xs); line-height: 1.4; color: var(--aeios-text-tertiary); }
+.dk-aqi-local[data-aqi-current="false"] .dk-stat__value { opacity: .6; } /* an old AQI is shown, but never looks current */
 
 /* ---- AQI arc ---- */
 .dk-arc { position: relative; width: 150px; margin: 0 auto; }

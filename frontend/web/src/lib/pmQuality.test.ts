@@ -71,6 +71,19 @@ describe('localAqi: the last hour of one node', () => {
     const rising = [0, 5, 10, 15, 20].map((m, i) => pkt('N2', m, 40 + i * 10, 60 + i * 15, 80 + i * 15));
     expect(localAqi(rising, 'N2', NOW).rejected.spike).toBe(0);
   });
+  it('keeps the last AQI of a silent node, marked not current, from the hour before its last packet', () => {
+    const lastHour = 14 * 60; // node went quiet 14 h ago
+    const ps = [0, 5, 10, 15, 70].map((m) => pkt('N2', lastHour + m, 10, 15, 18));
+    const a = localAqi(ps, 'N2', NOW);
+    expect(a.aqi).toBe(62);
+    expect(a.current).toBe(false);
+    expect(a.asOf).toBe(at(lastHour));
+    expect(a.used).toBe(4); // the packet 70 min before the last one is outside the window
+    expect(aqiBasis(a)).toContain('the 60 min before its last packet');
+    const live = localAqi([0, 5, 10].map((m) => pkt('N2', m, 10, 15, 18)), 'N2', NOW);
+    expect(live.current).toBe(true);
+    expect(aqiBasis(live)).toContain('the last 60 min');
+  });
   it('only counts this node and the last hour', () => {
     const ps = [pkt('N2', 0, 10, 14, 16), pkt('N2', 5, 10, 14, 16), pkt('N2', 90, 10, 14, 16), pkt('N1', 0, 10, 14, 16)];
     const a = localAqi(ps, 'N2', NOW);

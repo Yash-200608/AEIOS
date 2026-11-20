@@ -3,6 +3,7 @@ import { Readout, SourceLabel, type OperationalState } from '../../design/primit
 import MorphStateLabel from '../../motion/MorphStateLabel';
 import type { ObservationState, PacketValues } from './model';
 import { aqiBasis, type LocalAqi } from '../../lib/pmQuality';
+import { ago } from '../../lib/freshness';
 
 // 'no-reading' means a fresh packet whose particulate sensor sent no value: the node itself is current.
 const NODE_STATE: Record<ObservationState, OperationalState> = { valid: 'fresh', 'no-reading': 'fresh', stale: 'stale', 'no-packet': 'nodata' };
@@ -42,8 +43,8 @@ export default function LocalObservations({ loaded, failed, state, node, headlin
       <dl className="cc-obsrows" aria-label="Other local measurements">
         <Row label="PM10" value={pm(values.pm10)} unit="µg/m³" why={failed ? 'Gateway data unavailable.' : fresh ? (pmWhy ?? 'The sensor sent no value.') : 'Not current.'} />
         {aqi && !failed && (
-          <Row label="Local AQI" value={aqi.aqi === null ? null : String(aqi.aqi)} unit={aqi.aqi === null ? '' : `${aqi.category} · ${aqi.dominant}`}
-            why={aqiBasis(aqi)} note={`Indicative, US scale. ${aqi.aqi === null ? '' : aqiBasis(aqi)}`} />
+          <Row label={aqi.current ? 'Local AQI' : 'Last local AQI (not current)'} value={aqi.aqi === null ? null : String(aqi.aqi)} unit={aqi.aqi === null ? '' : `${aqi.category} · ${aqi.dominant}`}
+            why={aqiBasis(aqi)} note={`Indicative, US scale${aqi.current ? '' : `, measured ${ago(aqi.asOf)}`}. ${aqi.aqi === null ? '' : aqiBasis(aqi)}`} />
         )}
         <Row label="Temperature" value={cur(values.temp, 1)} unit="°C" why="Not current." />
         <Row label="Humidity" value={cur(values.rh)} unit="%" why="Not current." />
